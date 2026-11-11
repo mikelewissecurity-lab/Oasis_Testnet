@@ -10,6 +10,7 @@
       --bg: #0b0f19;
       --card-bg: #111827;
       --border: #1f2937;
+      --border-accent: #374151;
       --accent: #0092f6;
       --accent-hover: #0077c8;
       --text: #f9fafb;
@@ -24,35 +25,37 @@
     body {
       background-color: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2rem 1rem;
+      padding: 2rem 1rem 3rem;
     }
 
     .container {
       width: 100%;
-      max-width: 680px;
+      max-width: 720px;
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
     }
 
     header {
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
       margin-bottom: 0.5rem;
     }
 
-    header h1 {
-      font-size: 1.75rem;
+    .header-text h1 {
+      font-size: 1.85rem;
       font-weight: 700;
       letter-spacing: -0.025em;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.35rem;
     }
 
-    header p {
+    .header-text p {
       color: var(--text-muted);
       font-size: 0.95rem;
     }
@@ -66,9 +69,30 @@
       background: rgba(0, 146, 246, 0.15);
       color: var(--accent);
       border: 1px solid rgba(0, 146, 246, 0.3);
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+
+    .btn-help {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-accent);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-help:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent);
+      color: #fff;
     }
 
     .card {
@@ -80,7 +104,7 @@
     }
 
     .card-title {
-      font-size: 1rem;
+      font-size: 1.05rem;
       font-weight: 600;
       margin-bottom: 1rem;
       display: flex;
@@ -93,12 +117,13 @@
       color: #fff;
       border: none;
       border-radius: 8px;
-      padding: 0.75rem 1.25rem;
+      padding: 0.85rem 1.25rem;
       font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
       transition: background-color 0.15s ease;
       width: 100%;
+      text-align: center;
     }
 
     .btn:hover:not(:disabled) {
@@ -112,11 +137,9 @@
 
     .btn-download {
       background-color: var(--success);
-      margin-top: 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
+      color: #fff;
+      margin-top: 0.85rem;
+      display: none;
     }
 
     .btn-download:hover:not(:disabled) {
@@ -124,35 +147,42 @@
     }
 
     .dropzone {
-      border: 2px dashed var(--border);
-      border-radius: 8px;
-      padding: 2rem 1rem;
+      border: 2px dashed var(--border-accent);
+      border-radius: 10px;
+      padding: 2.25rem 1.25rem;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.2s, background-color 0.2s;
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      background: rgba(0, 0, 0, 0.2);
     }
 
     .dropzone:hover, .dropzone.dragover {
       border-color: var(--accent);
-      background-color: rgba(0, 146, 246, 0.04);
+      background-color: rgba(0, 146, 246, 0.05);
     }
 
     .dropzone p {
       color: var(--text-muted);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
     }
 
     .dropzone span {
       color: var(--accent);
-      font-weight: 500;
+      font-weight: 600;
+    }
+
+    .dropzone .hint {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 0.35rem;
     }
 
     .info-row {
       display: flex;
       justify-content: space-between;
       font-size: 0.875rem;
-      padding: 0.5rem 0;
+      padding: 0.65rem 0;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
@@ -175,13 +205,13 @@
     .stamp-box {
       background-color: #0d131f;
       border: 1px solid #1e293b;
-      border-radius: 6px;
-      padding: 0.75rem;
+      border-radius: 8px;
+      padding: 0.85rem;
       font-family: var(--font-mono);
       font-size: 0.75rem;
       color: #38bdf8;
       word-break: break-all;
-      line-height: 1.4;
+      line-height: 1.45;
       margin-top: 0.5rem;
       user-select: all;
     }
@@ -189,10 +219,11 @@
     .status-msg {
       margin-top: 1rem;
       font-size: 0.85rem;
-      padding: 0.75rem;
-      border-radius: 6px;
+      padding: 0.85rem;
+      border-radius: 8px;
       display: none;
       word-break: break-all;
+      line-height: 1.4;
     }
 
     .status-msg.active {
@@ -200,28 +231,121 @@
     }
 
     .status-msg.info {
-      background: rgba(0, 146, 246, 0.1);
+      background: rgba(0, 146, 246, 0.12);
       color: #60a5fa;
-      border: 1px solid rgba(0, 146, 246, 0.2);
+      border: 1px solid rgba(0, 146, 246, 0.25);
     }
 
     .status-msg.success {
-      background: rgba(16, 185, 129, 0.1);
+      background: rgba(16, 185, 129, 0.12);
       color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.25);
     }
 
     .status-msg.error {
-      background: rgba(239, 68, 68, 0.1);
+      background: rgba(239, 68, 68, 0.12);
       color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border-accent);
+      border-radius: 14px;
+      max-width: 620px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.75rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .step-item {
+      margin-bottom: 1.25rem;
+    }
+
+    .step-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-desc {
+      color: #d1d5db;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .step-desc a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    .code-block {
+      background: #0d131f;
+      border: 1px solid #1e293b;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.775rem;
+      color: #93c5fd;
+      margin-top: 0.35rem;
+      word-break: break-all;
     }
 
     footer {
       text-align: center;
       color: var(--text-muted);
       font-size: 0.8rem;
-      margin-top: 1rem;
+      line-height: 1.6;
     }
 
     a {
@@ -238,76 +362,140 @@
 
   <div class="container">
     <header>
-      <div class="badge">Oasis Sapphire Testnet</div>
-      <h1>Confidential State Portal</h1>
-      <p>Secure hardware TEE state verification & 157-byte root anchoring</p>
+      <div class="header-text">
+        <div class="badge">Oasis Sapphire Testnet</div>
+        <h1>Confidential State Portal</h1>
+        <p>Hardware-isolated state verification & 157-byte root anchoring</p>
+      </div>
+      <button id="openHelpBtn" class="btn-help">
+        <span>📖</span> User Guide & FAQ
+      </button>
     </header>
 
     <!-- Wallet Connection Card -->
     <div class="card">
       <div class="card-title">
-        <span>Wallet Status</span>
+        <span>1. Wallet Connection</span>
         <span id="networkStatus" style="font-size: 0.8rem; color: var(--text-muted);">Disconnected</span>
       </div>
       <button id="connectBtn" class="btn">Connect MetaMask</button>
-      <div id="accountInfo" style="display: none; margin-top: 1rem;">
+      <div id="accountInfo" style="display: none; margin-top: 0.5rem;">
         <div class="info-row">
-          <span class="info-label">Address</span>
+          <span class="info-label">Connected Wallet</span>
           <span id="userAddr" class="info-val">0x...</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Balance</span>
+          <span class="info-label">Network Balance</span>
           <span id="userBal" class="info-val">0 TEST</span>
         </div>
       </div>
     </div>
 
-    <!-- Active State Card -->
+    <!-- Payload Attachment & Submit Card -->
+    <div class="card">
+      <div class="card-title">2. Attach & Submit Workload</div>
+      
+      <div id="dropzone" class="dropzone">
+        <p>Drag & drop your file or <span>browse</span></p>
+        <p class="hint">Supports single files or .ZIP archives up to 100 MB</p>
+        <p id="fileMeta" style="margin-top: 0.65rem; font-family: var(--font-mono); font-size: 0.85rem; color: #fff;"></p>
+        <input type="file" id="fileInput" style="display: none;">
+      </div>
+
+      <button id="submitBtn" class="btn" disabled>Anchor Workload (5.0 TEST Deposit)</button>
+      <div id="statusBox" class="status-msg"></div>
+    </div>
+
+    <!-- Active State & Download Card -->
     <div class="card">
       <div class="card-title">
-        <span>Anchored Account State</span>
-        <button id="refreshBtn" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.8rem;">Refresh</button>
+        <span>3. Anchored Account Root</span>
+        <button id="refreshBtn" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.85rem; font-weight: 500;">🔄 Refresh</button>
       </div>
       <div class="info-row">
         <span class="info-label">Confirmed Sequence</span>
         <span id="onchainSeq" class="info-val">-</span>
       </div>
       <div class="info-row">
-        <span class="info-label">Registered Metric</span>
+        <span class="info-label">Verified Metric</span>
         <span id="onchainMetric" class="info-val">-</span>
       </div>
       <div class="info-row" style="flex-direction: column; gap: 0.25rem;">
-        <span class="info-label">157-Byte Root Stamp</span>
+        <span class="info-label">Strict 157-Byte Root Stamp</span>
         <div id="onchainStamp" class="stamp-box">No stamp anchored yet.</div>
       </div>
 
-      <!-- Download .Q Button -->
-      <button id="downloadBtn" class="btn btn-download" style="display: none;">
-        <span>📥</span>
-        <span id="downloadBtnText">Download .Q Stamp File (157 Bytes)</span>
+      <button id="downloadBtn" class="btn btn-download">
+        📥 Download Verified .Q Container Stamp
       </button>
     </div>
 
-    <!-- Job Submission Card -->
-    <div class="card">
-      <div class="card-title">Anchor New Payload</div>
-      <div id="dropzone" class="dropzone">
-        <p>Drag & drop any file here, or <span>browse</span></p>
-        <p id="fileMeta" style="margin-top: 0.5rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text);"></p>
-        <input type="file" id="fileInput" style="display: none;">
-      </div>
-
-      <button id="submitBtn" class="btn" disabled>Anchor File (5.0 TEST)</button>
-      <div id="statusBox" class="status-msg"></div>
-    </div>
-
     <footer>
-      Contract: <a id="contractLink" href="#" target="_blank">0xfD0D6E...8893</a> |
-      <a href="https://faucet.testnet.oasis.io/" target="_blank">Get Testnet TEST</a>
+      Ledger Contract: <a id="contractLink" href="#" target="_blank">0xfD0D...8893</a> • 
+      Enclave Signer: <span style="font-family: var(--font-mono);">0x97a5...1B18</span><br>
+      Network: Oasis Sapphire Testnet (Chain ID 23295) • 
+      <a href="https://faucet.testnet.oasis.io/" target="_blank">Get Free TEST Tokens</a>
     </footer>
   </div>
 
+  <!-- Help & User Guide Modal -->
+  <div id="helpModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>How to Use This Portal</h2>
+        <button id="closeHelpBtn" class="modal-close">&times;</button>
+      </div>
+
+      <div class="step-item">
+        <div class="step-title">Step 1: Set Up Oasis Sapphire Testnet in MetaMask</div>
+        <div class="step-desc">
+          Clicking <strong>Connect MetaMask</strong> on this page will automatically prompt MetaMask to add and switch to the Oasis Sapphire Testnet for you. If you need manual parameters:
+          <div class="code-block">
+            Network Name: Oasis Sapphire Testnet<br>
+            New RPC URL: https://testnet.sapphire.oasis.io<br>
+            Chain ID: 23295 (Hex: 0x5aff)<br>
+            Currency Symbol: TEST<br>
+            Block Explorer: https://testnet.explorer.sapphire.oasis.io
+          </div>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-title">Step 2: Get Free Testnet TEST Tokens</div>
+        <div class="step-desc">
+          You need free testnet gas tokens to submit transactions. Visit the official faucet, paste your MetaMask wallet address, and request test tokens:
+          <br>👉 <a href="https://faucet.testnet.oasis.io/" target="_blank">https://faucet.testnet.oasis.io/</a>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-title">Step 3: Attach Files or Zip Archives (Up to 100 MB)</div>
+        <div class="step-desc">
+          You can drop any file type directly into the dropzone (documents, data files, binaries, images). If you have folders or multiple files, simply compress them into a <strong>.zip</strong> archive up to <strong>100 MB</strong> and attach the zip.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-title">Step 4: Anchor & Download Your .Q Stamp</div>
+        <div class="step-desc">
+          Click <strong>Anchor Workload</strong> to submit the 5.0 TEST deposit transaction. The confidential hardware enclave verifies and seals your payload into an immutable 157-byte cryptographic root stamp on-chain. Once anchored, click <strong>Download Verified .Q Container Stamp</strong> to save your container file.
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-title">Contract & Enclave Registry</div>
+        <div class="step-desc">
+          <strong>Ledger Contract:</strong>
+          <div class="code-block">0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893</div>
+          <strong>Hardware Enclave Signer:</strong>
+          <div class="code-block">0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+    const SAPPHIRE_CHAIN_ID = 23295;
     const SAPPHIRE_CHAIN_HEX = "0x5aff";
     const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
     const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
@@ -324,21 +512,33 @@
     let contract = null;
     let userAddress = null;
     let selectedFileSize = 11286;
-    let currentStampBytes = null;
-    let currentSeq = 0;
+    let currentRawBlob = null;
+    let currentSequence = 0;
+    let pollInterval = null;
 
+    // Elements
     const connectBtn = document.getElementById('connectBtn');
     const submitBtn = document.getElementById('submitBtn');
     const refreshBtn = document.getElementById('refreshBtn');
     const downloadBtn = document.getElementById('downloadBtn');
-    const downloadBtnText = document.getElementById('downloadBtnText');
     const statusBox = document.getElementById('statusBox');
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const fileMeta = document.getElementById('fileMeta');
 
+    // Help Modal Elements
+    const helpModal = document.getElementById('helpModal');
+    const openHelpBtn = document.getElementById('openHelpBtn');
+    const closeHelpBtn = document.getElementById('closeHelpBtn');
+
+    openHelpBtn.addEventListener('click', () => helpModal.classList.add('active'));
+    closeHelpBtn.addEventListener('click', () => helpModal.classList.remove('active'));
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) helpModal.classList.remove('active');
+    });
+
     document.getElementById('contractLink').href = `${EXPLORER_URL}/address/${CONTRACT_ADDR}`;
-    document.getElementById('contractLink').innerText = `${CONTRACT_ADDR.slice(0, 8)}...${CONTRACT_ADDR.slice(-6)}`;
+    document.getElementById('contractLink').innerText = `${CONTRACT_ADDR.slice(0, 8)}...${CONTRACT_ADDR.slice(-4)}`;
 
     function setStatus(msg, type = 'info') {
       statusBox.className = `status-msg active ${type}`;
@@ -388,7 +588,7 @@
         contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
         document.getElementById('userAddr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('networkStatus').innerText = "Connected";
+        document.getElementById('networkStatus').innerText = "Connected (Oasis Sapphire)";
         document.getElementById('networkStatus').style.color = "var(--success)";
         document.getElementById('accountInfo').style.display = "block";
         connectBtn.style.display = "none";
@@ -414,63 +614,72 @@
       if (!contract || !userAddress) return;
       try {
         const slot = await contract.readSlotA(userAddress);
-        currentSeq = slot.seq;
-        document.getElementById('onchainSeq').innerText = slot.seq;
-        document.getElementById('onchainMetric').innerText = `${slot.metric} bytes`;
+        currentSequence = slot.seq;
+        document.getElementById('onchainSeq').innerText = `Sequence ${slot.seq}`;
+        document.getElementById('onchainMetric').innerText = `${slot.metric.toLocaleString()} bytes`;
 
         const blobBytes = ethers.utils.arrayify(slot.blob);
         if (blobBytes.length === 157) {
-          currentStampBytes = blobBytes;
+          currentRawBlob = blobBytes;
           document.getElementById('onchainStamp').innerText = slot.blob;
-          downloadBtn.style.display = "flex";
-          downloadBtnText.innerText = `Download .Q Stamp (Seq ${slot.seq} • 157 Bytes)`;
+          downloadBtn.style.display = 'block';
+          downloadBtn.innerText = `📥 Download .Q Stamp (Seq ${slot.seq} • 157 Bytes)`;
         } else if (blobBytes.length > 0) {
-          currentStampBytes = blobBytes;
+          currentRawBlob = blobBytes;
           document.getElementById('onchainStamp').innerText = `${slot.blob} (${blobBytes.length} bytes)`;
-          downloadBtn.style.display = "flex";
-          downloadBtnText.innerText = `Download Stamp (${blobBytes.length} Bytes)`;
+          downloadBtn.style.display = 'none';
         } else {
-          currentStampBytes = null;
+          currentRawBlob = null;
           document.getElementById('onchainStamp').innerText = "No root stamp anchored yet.";
-          downloadBtn.style.display = "none";
+          downloadBtn.style.display = 'none';
         }
       } catch (err) {
         console.error("Failed to read slot:", err);
       }
     }
 
-    // Direct binary download for .Q stamp file
+    // Binary .Q Download Handler
     downloadBtn.addEventListener('click', () => {
-      if (!currentStampBytes || currentStampBytes.length === 0) return;
-
-      const blob = new Blob([currentStampBytes], { type: 'application/octet-stream' });
+      if (!currentRawBlob || currentRawBlob.length !== 157) {
+        alert("No valid 157-byte stamp available for download.");
+        return;
+      }
+      const blob = new Blob([currentRawBlob], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `payload_seq${currentSeq}.Q`;
+      a.download = `payload_seq${currentSequence}.Q`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     });
 
+    // File Drag & Drop (supports single files or zip archives up to 100MB)
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
     dropzone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files);
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
     fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length) handleFile(e.target.files);
+      if (e.target.files.length) handleFile(e.target.files[0]);
     });
 
     function handleFile(file) {
+      const max100Mb = 100 * 1024 * 1024;
+      if (file.size > max100Mb) {
+        alert("File size exceeds the 100 MB payload cap.");
+        return;
+      }
       selectedFileSize = file.size;
-      fileMeta.innerText = `Selected: ${file.name} (${file.size.toLocaleString()} bytes)`;
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      fileMeta.innerText = `Selected: ${file.name} (${file.size.toLocaleString()} bytes / ${sizeMb} MB)`;
     }
 
+    // Transaction Submission
     submitBtn.addEventListener('click', async () => {
       if (!contract || !signer) return;
 
@@ -484,7 +693,7 @@
         const tx = await contract.openSessionA(
           selectedFileSize,
           ENCLAVE_SIGNER,
-          2,
+          2, // Mode 2: Strict Root Anchoring
           salt,
           extKey,
           { value: ethers.utils.parseEther("5.0") }
@@ -493,30 +702,25 @@
         setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block...`, "info");
 
         const receipt = await tx.wait();
-        setStatus(`Confirmed in block ${receipt.blockNumber}! Workload submitted to TEE enclave. Polling for hardware attestation...`, "info");
+        setStatus(`Confirmed in block ${receipt.blockNumber}! Workload submitted to TEE enclave. Polling for on-chain stamp...`, "success");
 
         await updateBalance();
 
-        // Poll for TEE syncSlotA confirmation
-        const initialSeq = currentSeq;
-        let pollCount = 0;
-        const pollInterval = setInterval(async () => {
-          pollCount++;
+        // Start polling for the newly synced 157-byte slot
+        if (pollInterval) clearInterval(pollInterval);
+        const startSeq = currentSequence;
+        pollInterval = setInterval(async () => {
           await loadOnChainSlot();
-          if (currentSeq > initialSeq) {
+          if (currentSequence > startSeq && currentRawBlob && currentRawBlob.length === 157) {
             clearInterval(pollInterval);
-            setStatus(`🏆 Success! Sequence ${currentSeq} anchored on-chain. Click the green button above to download your .Q stamp.`, "success");
-            submitBtn.disabled = false;
-          } else if (pollCount >= 20) {
-            clearInterval(pollInterval);
-            setStatus(`Session confirmed on-chain. Waiting for TEE runner to process. Click 'Refresh' when ready.`, "info");
-            submitBtn.disabled = false;
+            setStatus(`🏆 Successfully anchored Sequence ${currentSequence}! 157-byte container stamp ready for download below.`, "success");
           }
         }, 3000);
 
       } catch (err) {
         console.error(err);
         setStatus("Transaction rejected or failed: " + (err.reason || err.message || err), "error");
+      } finally {
         submitBtn.disabled = false;
       }
     });
