@@ -2,52 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BMLT 157-Byte Oasis Sapphire Testnet Portal</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; background: #0d1117; color: #e6edf3; padding: 20px; }
-    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
-    button { background: #238636; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 780px; margin: 40px auto; background: #0d1117; color: #e6edf3; padding: 20px; line-height: 1.5; }
+    h1 { color: #58a6ff; margin-bottom: 8px; }
+    .subtitle { color: #8b949e; margin-top: 0; margin-bottom: 24px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .card h3 { margin-top: 0; color: #f0f6fc; }
+    label { font-size: 13px; color: #8b949e; display: block; margin-top: 10px; }
+    input { margin: 6px 0 12px 0; display: block; width: 100%; box-sizing: border-box; padding: 10px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 6px; font-family: monospace; }
+    button { background: #238636; color: #fff; border: none; padding: 11px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin-top: 6px; }
     button:hover { background: #2ea043; }
-    input { margin: 8px 0; display: block; width: 100%; padding: 8px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 4px; }
-    pre { background: #010409; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; color: #7ee787; }
+    pre { background: #010409; border: 1px solid #30363d; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 13px; color: #7ee787; min-height: 120px; white-space: pre-wrap; }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; background: #1f2428; color: #58a6ff; margin-left: 8px; }
   </style>
 </head>
 <body>
-  <h1>BMLT Strict 157-Byte TEE Portal (Sapphire Testnet)</h1>
+  <h1>BMLT 157-Byte TEE Portal</h1>
+  <p class="subtitle">Oasis Sapphire Testnet &bull; Intel TDX Enclave Verification Suite</p>
 
   <div class="card">
-    <h3>1. Configuration & Wallet</h3>
-    <label>TEE Backend URL (Your Render / ROFL API Endpoint):</label>
-    <input type="text" id="apiUrl" value="http://localhost:8080" />
+    <h3>1. Connect Wallet & Verify Enclave</h3>
+    <label>ROFL TDX Enclave Proxy URL:</label>
+    <input type="text" id="apiUrl" value="https://p8080.m1873.opf-testnet-rofl-25.rofl.app" />
     <label>LedgerCoreTestnet Contract Address:</label>
-    <input type="text" id="contractAddr" value="0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893" />
-    <label>Registered Enclave Signer Address (Node):</label>
-    <input type="text" id="nodeAddr" placeholder="0xYourEnclaveSignerAddress" />
+    <input type="text" id="contractAddr" value="0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893" readonly />
+    <label>Registered Enclave Signer (Node):</label>
+    <input type="text" id="nodeAddr" value="0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18" readonly />
     <button onclick="connectWallet()">Connect MetaMask (Sapphire Testnet)</button>
-    <p id="walletStatus">Not connected</p>
+    <button onclick="checkEnclaveHealth()" style="background:#1f6feb; margin-left:8px;">Check TEE Health</button>
+    <p id="walletStatus">Wallet: Not connected</p>
   </div>
 
   <div class="card">
     <h3>2. Fold File into 157-Byte .Q Stamp (Mode 0x01)</h3>
+    <label>Select Any File to Fold in TDX RAM:</label>
     <input type="file" id="foldFile" />
-    <button onclick="foldFileToQ()">Pay Fee & Generate .Q File</button>
+    <button onclick="foldFileToQ()">Pay 5 TEST & Download 157-Byte .Q</button>
   </div>
 
   <div class="card">
-    <h3>3. Restore Data from .Q Stamp (Mode 0x02)</h3>
-    <label>Anchored Slot ID (Sequence #):</label>
+    <h3>3. Restore Data from 157-Byte .Q Stamp (Mode 0x02)</h3>
+    <label>Anchored Slot ID (Sequence # returned when folded):</label>
     <input type="number" id="slotId" value="1" />
-    <label>Start Block (0 = beginning):</label>
+    <label>Start Block (0 = start of file):</label>
     <input type="number" id="rStart" value="0" />
-    <label>End Block (e.g., 90 for full 11KB sample, or slice range):</label>
-    <input type="number" id="rEnd" value="90" />
-    <label>Select your 157-Byte .Q File:</label>
+    <label>End Block (128 bytes per block; e.g., 89 for 11KB file):</label>
+    <input type="number" id="rEnd" value="89" />
+    <label>Upload Your 157-Byte .Q File:</label>
     <input type="file" id="qFile" />
-    <button onclick="restoreFromQ()">Pay Fee & Restore Data</button>
+    <button onclick="restoreFromQ()">Pay 5 TEST & Restore Data</button>
   </div>
 
-  <pre id="logBox">Ready.</pre>
+  <pre id="logBox">System ready. Click "Check TEE Health" or "Connect MetaMask" to begin.</pre>
 
   <script>
     let provider, signer, userAddress;
@@ -64,49 +73,72 @@
       box.scrollTop = box.scrollHeight;
     }
 
+    async function checkEnclaveHealth() {
+      const apiUrl = document.getElementById("apiUrl").value.trim().replace(/\/$/, "");
+      log("[*] Pinging ROFL TDX Enclave at " + apiUrl + "/health ...");
+      try {
+        const res = await fetch(apiUrl + "/health");
+        const data = await res.json();
+        log("[✓] TEE Enclave Online! Signer: " + data.enclave_signer + " | Contract: " + data.contract);
+      } catch (err) {
+        log("[!] Could not reach TEE proxy yet: " + err.message);
+      }
+    }
+
     async function connectWallet() {
-      if (!window.ethereum) return alert("Install MetaMask!");
-      await window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId: "0x5aff",
-          chainName: "Oasis Sapphire Testnet",
-          nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-          rpcUrls: ["https://testnet.sapphire.oasis.io"],
-          blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-        }]
-      });
+      if (!window.ethereum) return alert("Please install MetaMask!");
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x5aff" }]
+        });
+      } catch (switchError) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x5aff",
+            chainName: "Oasis Sapphire Testnet",
+            nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
+            rpcUrls: ["https://testnet.sapphire.oasis.io"],
+            blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
+          }]
+        });
+      }
       provider = new ethers.BrowserProvider(window.ethereum);
       signer = await provider.getSigner();
       userAddress = await signer.getAddress();
       document.getElementById("walletStatus").textContent = "Connected: " + userAddress;
-      log("[✓] Connected to Sapphire Testnet: " + userAddress);
+      log("[✓] Connected to Oasis Sapphire Testnet: " + userAddress);
     }
 
     async function foldFileToQ() {
       try {
+        if (!signer) await connectWallet();
         const fileInput = document.getElementById("foldFile");
-        if (!fileInput.files.length) return alert("Select a file first!");
+        if (!fileInput.files.length) return alert("Select a file to fold first!");
         const file = fileInput.files[0];
 
         const contractAddr = document.getElementById("contractAddr").value.trim();
         const nodeAddr = document.getElementById("nodeAddr").value.trim();
-        const apiUrl = document.getElementById("apiUrl").value.trim();
+        const apiUrl = document.getElementById("apiUrl").value.trim().replace(/\/$/, "");
+
+        const totalBlocks = Math.ceil(file.size / 128);
+        document.getElementById("rEnd").value = totalBlocks;
 
         const contract = new ethers.Contract(contractAddr, ABI, signer);
-        const salt = "0x" + "aa".repeat(32);
+        const salt = ethers.hexlify(ethers.randomBytes(32));
         const extKey64 = "0x" + "00".repeat(64);
 
-        log(`[*] Paying TEST & calling openSessionA for ${file.name} (${file.size} bytes)...`);
+        log(`[*] Step 1/2: Paying 5.0 TEST & opening Session A on-chain for "${file.name}" (${file.size} bytes)...`);
         const tx = await contract.openSessionA(
           file.size,
           nodeAddr,
           2,
           salt,
           extKey64,
-          { value: ethers.parseEther("5.0") } // Matches 5.0 TEST minCallFee (or 1.0 TEST if lowered)
+          { value: ethers.parseEther("5.0") }
         );
-        log("[*] Transaction sent: " + tx.hash + ". Waiting for confirmation...");
+        log("[*] Waiting for Sapphire block confirmation (Tx: " + tx.hash + ")...");
         const receipt = await tx.wait();
 
         const iface = new ethers.Interface(ABI);
@@ -117,10 +149,10 @@
             if (parsed && parsed.name === "RefCommitted") refId = parsed.args.refId;
           } catch (e) {}
         }
-        if (!refId) throw new Error("RefCommitted event not found in receipt!");
-        log("[✓] Payment confirmed! Session refId: " + refId);
+        if (!refId) throw new Error("RefCommitted event not found in transaction logs.");
+        log("[✓] Ticket committed on-chain! refId: " + refId);
 
-        log("[*] Sending payload & refId to TEE Enclave to fold 157-byte .Q stamp...");
+        log("[*] Step 2/2: Streaming file to Intel TDX Enclave for Fermat Rope-Folding & on-chain anchoring...");
         const formData = new FormData();
         formData.append("refId", refId);
         formData.append("account", userAddress);
@@ -129,6 +161,10 @@
         const resp = await fetch(`${apiUrl}/api/fold`, { method: "POST", body: formData });
         if (!resp.ok) throw new Error(await resp.text());
 
+        const slotId = resp.headers.get("X-Slot-Id");
+        const anchorTx = resp.headers.get("X-Anchor-Tx");
+        if (slotId) document.getElementById("slotId").value = slotId;
+
         const blob = await resp.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -136,7 +172,9 @@
         a.download = file.name + ".Q";
         a.click();
 
-        log(`[🏆] Downloaded 157-byte ${file.name}.Q! On-Chain Slot ID: ${resp.headers.get("X-Slot-Id")} | Anchor Tx: ${resp.headers.get("X-Anchor-Tx")}`);
+        log(`[🏆] SUCCESS! Downloaded 157-byte "${file.name}.Q"`);
+        log(`     Anchored Slot ID: ${slotId} (auto-filled below for restoration)`);
+        log(`     Sapphire Anchor Tx: ${anchorTx}`);
       } catch (err) {
         log("[ERROR] " + err.message);
       }
@@ -144,8 +182,9 @@
 
     async function restoreFromQ() {
       try {
+        if (!signer) await connectWallet();
         const qInput = document.getElementById("qFile");
-        if (!qInput.files.length) return alert("Select your .Q file first!");
+        if (!qInput.files.length) return alert("Select your 157-byte .Q file first!");
         const qFile = qInput.files[0];
 
         const slotId = parseInt(document.getElementById("slotId").value);
@@ -153,13 +192,13 @@
         const rEnd = parseInt(document.getElementById("rEnd").value);
         const contractAddr = document.getElementById("contractAddr").value.trim();
         const nodeAddr = document.getElementById("nodeAddr").value.trim();
-        const apiUrl = document.getElementById("apiUrl").value.trim();
+        const apiUrl = document.getElementById("apiUrl").value.trim().replace(/\/$/, "");
 
         const contract = new ethers.Contract(contractAddr, ABI, signer);
-        const salt = "0x" + "aa".repeat(32);
+        const salt = ethers.hexlify(ethers.randomBytes(32));
         const extKey64 = "0x" + "00".repeat(64);
 
-        log(`[*] Paying TEST & calling openSessionB for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
+        log(`[*] Step 1/2: Paying 5.0 TEST & opening Rebuild Session B for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
         const tx = await contract.openSessionB(
           slotId,
           rStart,
@@ -170,6 +209,7 @@
           extKey64,
           { value: ethers.parseEther("5.0") }
         );
+        log("[*] Waiting for Sapphire block confirmation (Tx: " + tx.hash + ")...");
         const receipt = await tx.wait();
 
         const iface = new ethers.Interface(ABI);
@@ -180,8 +220,10 @@
             if (parsed && parsed.name === "RefCommitted") refId = parsed.args.refId;
           } catch (e) {}
         }
-        log("[✓] Rebuild Session opened! refId: " + refId);
+        if (!refId) throw new Error("RefCommitted event not found in transaction logs.");
+        log("[✓] Rebuild ticket committed! refId: " + refId);
 
+        log("[*] Step 2/2: Sending .Q file to TDX Enclave to verify & reconstruct data...");
         const formData = new FormData();
         formData.append("refId", refId);
         formData.append("account", userAddress);
@@ -193,14 +235,16 @@
         const resp = await fetch(`${apiUrl}/api/restore`, { method: "POST", body: formData });
         if (!resp.ok) throw new Error(await resp.text());
 
+        const restoreTx = resp.headers.get("X-Restore-Tx");
         const blob = await resp.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = "restored_" + qFile.name.replace(".Q", "");
+        a.download = "restored_" + qFile.name.replace(/\.Q$/i, "");
         a.click();
 
-        log(`[🏆] Data restored and downloaded! Settlement Tx: ${resp.headers.get("X-Restore-Tx")}`);
+        log(`[🏆] SUCCESS! Data reconstructed and downloaded!`);
+        log(`     Sapphire Settlement Tx: ${restoreTx}`);
       } catch (err) {
         log("[ERROR] " + err.message);
       }
