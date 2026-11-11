@@ -1,739 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confidential State Portal | Oasis Sapphire</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>BMLT 157-Byte Oasis Sapphire Testnet Portal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
   <style>
-    :root {
-      --bg: #0b0f19;
-      --card-bg: #111827;
-      --border: #1f2937;
-      --border-accent: #374151;
-      --accent: #0092f6;
-      --accent-hover: #0077c8;
-      --text: #f9fafb;
-      --text-muted: #9ca3af;
-      --success: #10b981;
-      --success-hover: #059669;
-      --error: #ef4444;
-      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem 1rem 3rem;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 720px;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 0.5rem;
-    }
-
-    .header-text h1 {
-      font-size: 1.85rem;
-      font-weight: 700;
-      letter-spacing: -0.025em;
-      margin-bottom: 0.35rem;
-    }
-
-    .header-text p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border-radius: 9999px;
-      background: rgba(0, 146, 246, 0.15);
-      color: var(--accent);
-      border: 1px solid rgba(0, 146, 246, 0.3);
-      margin-bottom: 0.5rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .btn-help {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-accent);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      transition: all 0.2s ease;
-    }
-
-    .btn-help:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    .card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .card-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .btn {
-      background-color: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 0.85rem 1.25rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.15s ease;
-      width: 100%;
-      text-align: center;
-    }
-
-    .btn:hover:not(:disabled) {
-      background-color: var(--accent-hover);
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-download {
-      background-color: var(--success);
-      color: #fff;
-      margin-top: 0.85rem;
-      display: none;
-    }
-
-    .btn-download:hover:not(:disabled) {
-      background-color: var(--success-hover);
-    }
-
-    .dropzone {
-      border: 2px dashed var(--border-accent);
-      border-radius: 10px;
-      padding: 2.25rem 1.25rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background-color 0.2s;
-      margin-bottom: 1.25rem;
-      background: rgba(0, 0, 0, 0.2);
-    }
-
-    .dropzone:hover, .dropzone.dragover {
-      border-color: var(--accent);
-      background-color: rgba(0, 146, 246, 0.05);
-    }
-
-    .dropzone p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-    }
-
-    .dropzone span {
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    .dropzone .hint {
-      font-size: 0.8rem;
-      color: #6b7280;
-      margin-top: 0.35rem;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.875rem;
-      padding: 0.65rem 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .info-row:last-child {
-      border-bottom: none;
-    }
-
-    .info-label {
-      color: var(--text-muted);
-    }
-
-    .info-val {
-      font-family: var(--font-mono);
-      font-weight: 500;
-      word-break: break-all;
-      text-align: right;
-      max-width: 65%;
-    }
-
-    .stamp-box {
-      background-color: #0d131f;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 0.85rem;
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      color: #38bdf8;
-      word-break: break-all;
-      line-height: 1.45;
-      margin-top: 0.5rem;
-      user-select: all;
-    }
-
-    .status-msg {
-      margin-top: 1rem;
-      font-size: 0.85rem;
-      padding: 0.85rem;
-      border-radius: 8px;
-      display: none;
-      word-break: break-all;
-      line-height: 1.4;
-    }
-
-    .status-msg.active {
-      display: block;
-    }
-
-    .status-msg.info {
-      background: rgba(0, 146, 246, 0.12);
-      color: #60a5fa;
-      border: 1px solid rgba(0, 146, 246, 0.25);
-    }
-
-    .status-msg.success {
-      background: rgba(16, 185, 129, 0.12);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    .status-msg.error {
-      background: rgba(239, 68, 68, 0.12);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(4px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      padding: 1.5rem;
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal {
-      background: var(--card-bg);
-      border: 1px solid var(--border-accent);
-      border-radius: 14px;
-      max-width: 620px;
-      width: 100%;
-      max-height: 85vh;
-      overflow-y: auto;
-      padding: 1.75rem;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.25rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0.75rem;
-    }
-
-    .modal-header h2 {
-      font-size: 1.25rem;
-      font-weight: 700;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .modal-close:hover {
-      color: #fff;
-    }
-
-    .step-item {
-      margin-bottom: 1.25rem;
-    }
-
-    .step-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--accent);
-      margin-bottom: 0.35rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .step-desc {
-      color: #d1d5db;
-      font-size: 0.875rem;
-      line-height: 1.5;
-    }
-
-    .step-desc a {
-      color: var(--accent);
-      text-decoration: underline;
-    }
-
-    .code-block {
-      background: #0d131f;
-      border: 1px solid #1e293b;
-      padding: 0.5rem 0.75rem;
-      border-radius: 6px;
-      font-family: var(--font-mono);
-      font-size: 0.775rem;
-      color: #93c5fd;
-      margin-top: 0.35rem;
-      word-break: break-all;
-    }
-
-    footer {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      line-height: 1.6;
-    }
-
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; background: #0d1117; color: #e6edf3; padding: 20px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    button { background: #238636; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #2ea043; }
+    input { margin: 8px 0; display: block; width: 100%; padding: 8px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 4px; }
+    pre { background: #010409; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; color: #7ee787; }
   </style>
 </head>
 <body>
+  <h1>BMLT Strict 157-Byte TEE Portal (Sapphire Testnet)</h1>
 
-  <div class="container">
-    <header>
-      <div class="header-text">
-        <div class="badge">Oasis Sapphire Testnet</div>
-        <h1>Confidential State Portal</h1>
-        <p>Hardware-isolated state verification & 157-byte root anchoring</p>
-      </div>
-      <button id="openHelpBtn" class="btn-help">
-        <span>📖</span> User Guide & FAQ
-      </button>
-    </header>
-
-    <!-- Wallet Connection Card -->
-    <div class="card">
-      <div class="card-title">
-        <span>1. Wallet Connection</span>
-        <span id="networkStatus" style="font-size: 0.8rem; color: var(--text-muted);">Disconnected</span>
-      </div>
-      <button id="connectBtn" class="btn">Connect MetaMask</button>
-      <div id="accountInfo" style="display: none; margin-top: 0.5rem;">
-        <div class="info-row">
-          <span class="info-label">Connected Wallet</span>
-          <span id="userAddr" class="info-val">0x...</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Network Balance</span>
-          <span id="userBal" class="info-val">0 TEST</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Payload Attachment & Submit Card -->
-    <div class="card">
-      <div class="card-title">2. Attach & Submit Workload</div>
-      
-      <div id="dropzone" class="dropzone">
-        <p>Drag & drop your file or <span>browse</span></p>
-        <p class="hint">Supports single files or .ZIP archives up to 100 MB</p>
-        <p id="fileMeta" style="margin-top: 0.65rem; font-family: var(--font-mono); font-size: 0.85rem; color: #fff;"></p>
-        <input type="file" id="fileInput" style="display: none;">
-      </div>
-
-      <button id="submitBtn" class="btn" disabled>Anchor Workload (5.0 TEST Deposit)</button>
-      <div id="statusBox" class="status-msg"></div>
-    </div>
-
-    <!-- Active State & Download Card -->
-    <div class="card">
-      <div class="card-title">
-        <span>3. Anchored Account Root</span>
-        <button id="refreshBtn" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.85rem; font-weight: 500;">🔄 Refresh</button>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Confirmed Sequence</span>
-        <span id="onchainSeq" class="info-val">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Verified Metric</span>
-        <span id="onchainMetric" class="info-val">-</span>
-      </div>
-      <div class="info-row" style="flex-direction: column; gap: 0.25rem;">
-        <span class="info-label">Strict 157-Byte Root Stamp</span>
-        <div id="onchainStamp" class="stamp-box">No stamp anchored yet.</div>
-      </div>
-
-      <button id="downloadBtn" class="btn btn-download">
-        📥 Download Verified .Q Container Stamp
-      </button>
-    </div>
-
-    <footer>
-      Ledger Contract: <a id="contractLink" href="#" target="_blank">0xfD0D...8893</a> • 
-      Enclave Signer: <span style="font-family: var(--font-mono);">0x97a5...1B18</span><br>
-      Network: Oasis Sapphire Testnet (Chain ID 23295) • 
-      <a href="https://faucet.testnet.oasis.io/" target="_blank">Get Free TEST Tokens</a>
-    </footer>
+  <div class="card">
+    <h3>1. Configuration & Wallet</h3>
+    <label>TEE Backend URL (Your Render / ROFL API Endpoint):</label>
+    <input type="text" id="apiUrl" value="http://localhost:8080" />
+    <label>LedgerCoreTestnet Contract Address:</label>
+    <input type="text" id="contractAddr" value="0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893" />
+    <label>Registered Enclave Signer Address (Node):</label>
+    <input type="text" id="nodeAddr" placeholder="0xYourEnclaveSignerAddress" />
+    <button onclick="connectWallet()">Connect MetaMask (Sapphire Testnet)</button>
+    <p id="walletStatus">Not connected</p>
   </div>
 
-  <!-- Help & User Guide Modal -->
-  <div id="helpModal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>How to Use This Portal</h2>
-        <button id="closeHelpBtn" class="modal-close">&times;</button>
-      </div>
-
-      <div class="step-item">
-        <div class="step-title">Step 1: Set Up Oasis Sapphire Testnet in MetaMask</div>
-        <div class="step-desc">
-          Clicking <strong>Connect MetaMask</strong> on this page will automatically prompt MetaMask to add and switch to the Oasis Sapphire Testnet for you. If you need manual parameters:
-          <div class="code-block">
-            Network Name: Oasis Sapphire Testnet<br>
-            New RPC URL: https://testnet.sapphire.oasis.io<br>
-            Chain ID: 23295 (Hex: 0x5aff)<br>
-            Currency Symbol: TEST<br>
-            Block Explorer: https://testnet.explorer.sapphire.oasis.io
-          </div>
-        </div>
-      </div>
-
-      <div class="step-item">
-        <div class="step-title">Step 2: Get Free Testnet TEST Tokens</div>
-        <div class="step-desc">
-          You need free testnet gas tokens to submit transactions. Visit the official faucet, paste your MetaMask wallet address, and request test tokens:
-          <br>👉 <a href="https://faucet.testnet.oasis.io/" target="_blank">https://faucet.testnet.oasis.io/</a>
-        </div>
-      </div>
-
-      <div class="step-item">
-        <div class="step-title">Step 3: Attach Files or Zip Archives (Up to 100 MB)</div>
-        <div class="step-desc">
-          You can drop any file type directly into the dropzone (documents, data files, binaries, images). If you have folders or multiple files, simply compress them into a <strong>.zip</strong> archive up to <strong>100 MB</strong> and attach the zip.
-        </div>
-      </div>
-
-      <div class="step-item">
-        <div class="step-title">Step 4: Anchor & Download Your .Q Stamp</div>
-        <div class="step-desc">
-          Click <strong>Anchor Workload</strong> to submit the 5.0 TEST deposit transaction. The confidential hardware enclave verifies and seals your payload into an immutable 157-byte cryptographic root stamp on-chain. Once anchored, click <strong>Download Verified .Q Container Stamp</strong> to save your container file.
-        </div>
-      </div>
-
-      <div class="step-item">
-        <div class="step-title">Contract & Enclave Registry</div>
-        <div class="step-desc">
-          <strong>Ledger Contract:</strong>
-          <div class="code-block">0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893</div>
-          <strong>Hardware Enclave Signer:</strong>
-          <div class="code-block">0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18</div>
-        </div>
-      </div>
-    </div>
+  <div class="card">
+    <h3>2. Fold File into 157-Byte .Q Stamp (Mode 0x01)</h3>
+    <input type="file" id="foldFile" />
+    <button onclick="foldFileToQ()">Pay Fee & Generate .Q File</button>
   </div>
+
+  <div class="card">
+    <h3>3. Restore Data from .Q Stamp (Mode 0x02)</h3>
+    <label>Anchored Slot ID (Sequence #):</label>
+    <input type="number" id="slotId" value="1" />
+    <label>Start Block (0 = beginning):</label>
+    <input type="number" id="rStart" value="0" />
+    <label>End Block (e.g., 90 for full 11KB sample, or slice range):</label>
+    <input type="number" id="rEnd" value="90" />
+    <label>Select your 157-Byte .Q File:</label>
+    <input type="file" id="qFile" />
+    <button onclick="restoreFromQ()">Pay Fee & Restore Data</button>
+  </div>
+
+  <pre id="logBox">Ready.</pre>
 
   <script>
-    const SAPPHIRE_CHAIN_ID = 23295;
-    const SAPPHIRE_CHAIN_HEX = "0x5aff";
-    const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
-    const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
-    const RPC_URL = "https://testnet.sapphire.oasis.io";
-    const EXPLORER_URL = "https://testnet.explorer.sapphire.oasis.io";
+    let provider, signer, userAddress;
 
     const ABI = [
-      "function openSessionA(uint64 metric, address nodeSigner, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId)",
-      "function readSlotA(address account) external view returns (uint32 seq, uint64 metric, bytes blob)"
+      "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
+      "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
+      "event RefCommitted(bytes32 indexed refId)"
     ];
 
-    let provider = null;
-    let signer = null;
-    let contract = null;
-    let userAddress = null;
-    let selectedFileSize = 11286;
-    let currentRawBlob = null;
-    let currentSequence = 0;
-    let pollInterval = null;
-
-    // Elements
-    const connectBtn = document.getElementById('connectBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const statusBox = document.getElementById('statusBox');
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('fileInput');
-    const fileMeta = document.getElementById('fileMeta');
-
-    // Help Modal Elements
-    const helpModal = document.getElementById('helpModal');
-    const openHelpBtn = document.getElementById('openHelpBtn');
-    const closeHelpBtn = document.getElementById('closeHelpBtn');
-
-    openHelpBtn.addEventListener('click', () => helpModal.classList.add('active'));
-    closeHelpBtn.addEventListener('click', () => helpModal.classList.remove('active'));
-    helpModal.addEventListener('click', (e) => {
-      if (e.target === helpModal) helpModal.classList.remove('active');
-    });
-
-    document.getElementById('contractLink').href = `${EXPLORER_URL}/address/${CONTRACT_ADDR}`;
-    document.getElementById('contractLink').innerText = `${CONTRACT_ADDR.slice(0, 8)}...${CONTRACT_ADDR.slice(-4)}`;
-
-    function setStatus(msg, type = 'info') {
-      statusBox.className = `status-msg active ${type}`;
-      statusBox.innerHTML = msg;
-    }
-
-    async function switchNetwork() {
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: SAPPHIRE_CHAIN_HEX }],
-        });
-      } catch (switchError) {
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: SAPPHIRE_CHAIN_HEX,
-              chainName: 'Oasis Sapphire Testnet',
-              nativeCurrency: { name: 'TEST', symbol: 'TEST', decimals: 18 },
-              rpcUrls: [RPC_URL],
-              blockExplorerUrls: [EXPLORER_URL]
-            }],
-          });
-        } else {
-          throw switchError;
-        }
-      }
+    function log(msg) {
+      const box = document.getElementById("logBox");
+      box.textContent += "\n" + msg;
+      box.scrollTop = box.scrollHeight;
     }
 
     async function connectWallet() {
-      if (!window.ethereum) {
-        alert("MetaMask is required to use this portal.");
-        return;
-      }
+      if (!window.ethereum) return alert("Install MetaMask!");
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x5aff",
+          chainName: "Oasis Sapphire Testnet",
+          nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
+          rpcUrls: ["https://testnet.sapphire.oasis.io"],
+          blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
+        }]
+      });
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
+      document.getElementById("walletStatus").textContent = "Connected: " + userAddress;
+      log("[✓] Connected to Sapphire Testnet: " + userAddress);
+    }
 
+    async function foldFileToQ() {
       try {
-        connectBtn.disabled = true;
-        connectBtn.innerText = "Connecting...";
+        const fileInput = document.getElementById("foldFile");
+        if (!fileInput.files.length) return alert("Select a file first!");
+        const file = fileInput.files[0];
 
-        await switchNetwork();
+        const contractAddr = document.getElementById("contractAddr").value.trim();
+        const nodeAddr = document.getElementById("nodeAddr").value.trim();
+        const apiUrl = document.getElementById("apiUrl").value.trim();
 
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
+        const contract = new ethers.Contract(contractAddr, ABI, signer);
+        const salt = "0x" + "aa".repeat(32);
+        const extKey64 = "0x" + "00".repeat(64);
 
-        document.getElementById('userAddr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('networkStatus').innerText = "Connected (Oasis Sapphire)";
-        document.getElementById('networkStatus').style.color = "var(--success)";
-        document.getElementById('accountInfo').style.display = "block";
-        connectBtn.style.display = "none";
-        submitBtn.disabled = false;
-
-        await updateBalance();
-        await loadOnChainSlot();
-      } catch (err) {
-        console.error(err);
-        connectBtn.disabled = false;
-        connectBtn.innerText = "Connect MetaMask";
-        setStatus("Connection failed: " + (err.message || err), "error");
-      }
-    }
-
-    async function updateBalance() {
-      if (!provider || !userAddress) return;
-      const bal = await provider.getBalance(userAddress);
-      document.getElementById('userBal').innerText = `${parseFloat(ethers.utils.formatEther(bal)).toFixed(3)} TEST`;
-    }
-
-    async function loadOnChainSlot() {
-      if (!contract || !userAddress) return;
-      try {
-        const slot = await contract.readSlotA(userAddress);
-        currentSequence = slot.seq;
-        document.getElementById('onchainSeq').innerText = `Sequence ${slot.seq}`;
-        document.getElementById('onchainMetric').innerText = `${slot.metric.toLocaleString()} bytes`;
-
-        const blobBytes = ethers.utils.arrayify(slot.blob);
-        if (blobBytes.length === 157) {
-          currentRawBlob = blobBytes;
-          document.getElementById('onchainStamp').innerText = slot.blob;
-          downloadBtn.style.display = 'block';
-          downloadBtn.innerText = `📥 Download .Q Stamp (Seq ${slot.seq} • 157 Bytes)`;
-        } else if (blobBytes.length > 0) {
-          currentRawBlob = blobBytes;
-          document.getElementById('onchainStamp').innerText = `${slot.blob} (${blobBytes.length} bytes)`;
-          downloadBtn.style.display = 'none';
-        } else {
-          currentRawBlob = null;
-          document.getElementById('onchainStamp').innerText = "No root stamp anchored yet.";
-          downloadBtn.style.display = 'none';
-        }
-      } catch (err) {
-        console.error("Failed to read slot:", err);
-      }
-    }
-
-    // Binary .Q Download Handler
-    downloadBtn.addEventListener('click', () => {
-      if (!currentRawBlob || currentRawBlob.length !== 157) {
-        alert("No valid 157-byte stamp available for download.");
-        return;
-      }
-      const blob = new Blob([currentRawBlob], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `payload_seq${currentSequence}.Q`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-
-    // File Drag & Drop (supports single files or zip archives up to 100MB)
-    dropzone.addEventListener('click', () => fileInput.click());
-    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length) handleFile(e.target.files[0]);
-    });
-
-    function handleFile(file) {
-      const max100Mb = 100 * 1024 * 1024;
-      if (file.size > max100Mb) {
-        alert("File size exceeds the 100 MB payload cap.");
-        return;
-      }
-      selectedFileSize = file.size;
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-      fileMeta.innerText = `Selected: ${file.name} (${file.size.toLocaleString()} bytes / ${sizeMb} MB)`;
-    }
-
-    // Transaction Submission
-    submitBtn.addEventListener('click', async () => {
-      if (!contract || !signer) return;
-
-      try {
-        submitBtn.disabled = true;
-        setStatus("Confirming transaction in MetaMask...", "info");
-
-        const salt = ethers.utils.randomBytes(32);
-        const extKey = ethers.utils.randomBytes(64);
-
+        log(`[*] Paying TEST & calling openSessionA for ${file.name} (${file.size} bytes)...`);
         const tx = await contract.openSessionA(
-          selectedFileSize,
-          ENCLAVE_SIGNER,
-          2, // Mode 2: Strict Root Anchoring
+          file.size,
+          nodeAddr,
+          2,
           salt,
-          extKey,
-          { value: ethers.utils.parseEther("5.0") }
+          extKey64,
+          { value: ethers.parseEther("5.0") } // Matches 5.0 TEST minCallFee (or 1.0 TEST if lowered)
         );
-
-        setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block...`, "info");
-
+        log("[*] Transaction sent: " + tx.hash + ". Waiting for confirmation...");
         const receipt = await tx.wait();
-        setStatus(`Confirmed in block ${receipt.blockNumber}! Workload submitted to TEE enclave. Polling for on-chain stamp...`, "success");
 
-        await updateBalance();
+        const iface = new ethers.Interface(ABI);
+        let refId = null;
+        for (const l of receipt.logs) {
+          try {
+            const parsed = iface.parseLog(l);
+            if (parsed && parsed.name === "RefCommitted") refId = parsed.args.refId;
+          } catch (e) {}
+        }
+        if (!refId) throw new Error("RefCommitted event not found in receipt!");
+        log("[✓] Payment confirmed! Session refId: " + refId);
 
-        // Start polling for the newly synced 157-byte slot
-        if (pollInterval) clearInterval(pollInterval);
-        const startSeq = currentSequence;
-        pollInterval = setInterval(async () => {
-          await loadOnChainSlot();
-          if (currentSequence > startSeq && currentRawBlob && currentRawBlob.length === 157) {
-            clearInterval(pollInterval);
-            setStatus(`🏆 Successfully anchored Sequence ${currentSequence}! 157-byte container stamp ready for download below.`, "success");
-          }
-        }, 3000);
+        log("[*] Sending payload & refId to TEE Enclave to fold 157-byte .Q stamp...");
+        const formData = new FormData();
+        formData.append("refId", refId);
+        formData.append("account", userAddress);
+        formData.append("file", file);
 
+        const resp = await fetch(`${apiUrl}/api/fold`, { method: "POST", body: formData });
+        if (!resp.ok) throw new Error(await resp.text());
+
+        const blob = await resp.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name + ".Q";
+        a.click();
+
+        log(`[🏆] Downloaded 157-byte ${file.name}.Q! On-Chain Slot ID: ${resp.headers.get("X-Slot-Id")} | Anchor Tx: ${resp.headers.get("X-Anchor-Tx")}`);
       } catch (err) {
-        console.error(err);
-        setStatus("Transaction rejected or failed: " + (err.reason || err.message || err), "error");
-      } finally {
-        submitBtn.disabled = false;
+        log("[ERROR] " + err.message);
       }
-    });
+    }
 
-    connectBtn.addEventListener('click', connectWallet);
-    refreshBtn.addEventListener('click', async () => {
-      await updateBalance();
-      await loadOnChainSlot();
-    });
+    async function restoreFromQ() {
+      try {
+        const qInput = document.getElementById("qFile");
+        if (!qInput.files.length) return alert("Select your .Q file first!");
+        const qFile = qInput.files[0];
 
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', () => window.location.reload());
-      window.ethereum.on('chainChanged', () => window.location.reload());
+        const slotId = parseInt(document.getElementById("slotId").value);
+        const rStart = parseInt(document.getElementById("rStart").value);
+        const rEnd = parseInt(document.getElementById("rEnd").value);
+        const contractAddr = document.getElementById("contractAddr").value.trim();
+        const nodeAddr = document.getElementById("nodeAddr").value.trim();
+        const apiUrl = document.getElementById("apiUrl").value.trim();
+
+        const contract = new ethers.Contract(contractAddr, ABI, signer);
+        const salt = "0x" + "aa".repeat(32);
+        const extKey64 = "0x" + "00".repeat(64);
+
+        log(`[*] Paying TEST & calling openSessionB for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
+        const tx = await contract.openSessionB(
+          slotId,
+          rStart,
+          rEnd,
+          nodeAddr,
+          2,
+          salt,
+          extKey64,
+          { value: ethers.parseEther("5.0") }
+        );
+        const receipt = await tx.wait();
+
+        const iface = new ethers.Interface(ABI);
+        let refId = null;
+        for (const l of receipt.logs) {
+          try {
+            const parsed = iface.parseLog(l);
+            if (parsed && parsed.name === "RefCommitted") refId = parsed.args.refId;
+          } catch (e) {}
+        }
+        log("[✓] Rebuild Session opened! refId: " + refId);
+
+        const formData = new FormData();
+        formData.append("refId", refId);
+        formData.append("account", userAddress);
+        formData.append("slotId", slotId);
+        formData.append("rStart", rStart);
+        formData.append("rEnd", rEnd);
+        formData.append("qfile", qFile);
+
+        const resp = await fetch(`${apiUrl}/api/restore`, { method: "POST", body: formData });
+        if (!resp.ok) throw new Error(await resp.text());
+
+        const blob = await resp.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "restored_" + qFile.name.replace(".Q", "");
+        a.click();
+
+        log(`[🏆] Data restored and downloaded! Settlement Tx: ${resp.headers.get("X-Restore-Tx")}`);
+      } catch (err) {
+        log("[ERROR] " + err.message);
+      }
     }
   </script>
 </body>
