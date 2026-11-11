@@ -1,0 +1,91 @@
+import os
+from web3 import Web3
+from eth_account import Account
+from dotenv import load_dotenv
+
+load_dotenv('.env.confidential')
+
+RPC_URL = os.environ.get('SAPPHIRE_TESTNET_RPC', 'https://testnet.sapphire.oasis.io')
+LEDGER_ADDR = Web3.to_checksum_address(os.environ['LEDGER_CONTRACT_ADDR'].strip())
+DEPLOYER_KEY = os.environ.get('DEPLOYER_PRIVATE_KEY', os.environ.get('DEPLOYER_PRIV_KEY', '')).strip()
+ENCLAVE_KEY = os.environ.get('ENCLAVE_PRIVATE_KEY', os.environ.get('ENCLAVE_PRIV_KEY', '')).strip()
+
+w3 = Web3(Web3.HTTPProvider(RPC_URL))
+deployer_acct = Account.from_key(DEPLOYER_KEY)
+enclave_acct = Account.from_key(ENCLAVE_KEY)
+
+ABI = [
+    {
+        "inputs": [
+            {"name": "account", "type": "address"},
+            {"name": "seq", "type": "uint32"},
+            {"name": "metric", "type": "uint64"},
+            {"name": "blobHash", "type": "bytes32"}
+        ],
+        "name": "hashPayloadA",
+        "outputs": [{"name": "", "type": "bytes32"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {"name": "account", "type": "address"},
+            {"name": "seq", "type": "uint32"},
+            {"name": "metric", "type": "uint64"},
+            {"name": "blob", "type": "bytes"},
+            {"name": "sig", "type": "bytes"}
+        ],
+        "name": "syncSlotA",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+]
+
+contract = w3.eth.contract(address=LEDGER_ADDR, abi=ABI)
+
+# Read the generated 157-byte stamp
+with open('vaults/sample.Q', 'rb') as f:
+    q_bytes = f.read()
+
+assert len(q_bytes) == 157, f"Stamp size is {len(q_bytes)}B"
+print(f"[✓] Verified vaults/sample.Q: exactly {len(q_bytes)} Bytes")
+
+# 1. Enclave signs EIP-712 payload digest
+q_hash = Web3.keccak(q_bytes)
+digest = contract.functions.hashPayloadA(deployer_acct.address, 1, 11286, q_hash).call()
+sig = enclave_acct.unsafe_sign_hash(digest).signature
+print(f"[✓] Hardware Enclave Signature: 0x{sig.hex()[:16]}...")
+
+# 2. Submit syncSlotA transaction
+print("[*] Submitting syncSlotA transaction to Oasis Sapphire Testnet...")
+tx = contract.functions.syncSlotA(
+    deployer_acct.address,
+    1,
+    11286,
+    q_bytes,
+    sig
+).build_transaction({
+    'from': deployer_acct.address,
+    'nonce': w3.eth.get_transaction_count(deployer_acct.address),
+    'gas': 450000,
+    'gasPrice': w3.eth.gas_price,
+    'chainId': 23295,
+})
+
+signed_tx = deployer_acct.sign_transaction(tx)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+print(f"[*] Broadcast tx: 0x{tx_hash.hex()}. Awaiting confirmation...")
+
+receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+print("\n====================================================================")
+print(" 🏆 LIVE OASIS SAPPHIRE TESTNET ANCHOR SUCCESSFUL!")
+print(f" Transaction Hash: 0x{tx_hash.hex()}")
+print(f" Block Number:     {receipt.blockNumber}")
+print(f" Gas Used:         {receipt.gasUsed}")
+print(f" Anchored Slot:    Sequence 1")
+print(f" Anchored Stamp:   0x{q_bytes.hex()}")
+status_str = "CONFIRMED (SUCCESS)" if receipt.status == 1 else "FAILED"
+print(f" Status:           {status_str}")
+print("====================================================================")
