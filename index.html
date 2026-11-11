@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confidential State Portal | Oasis Sapphire Testnet</title>
+  <title>Confidential State Portal | Oasis Sapphire</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <style>
     :root {
@@ -15,6 +15,7 @@
       --text: #f9fafb;
       --text-muted: #9ca3af;
       --success: #10b981;
+      --success-hover: #059669;
       --error: #ef4444;
       --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     }
@@ -107,6 +108,19 @@
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    .btn-download {
+      background-color: var(--success);
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn-download:hover:not(:disabled) {
+      background-color: var(--success-hover);
     }
 
     .dropzone {
@@ -266,6 +280,12 @@
         <span class="info-label">157-Byte Root Stamp</span>
         <div id="onchainStamp" class="stamp-box">No stamp anchored yet.</div>
       </div>
+
+      <!-- Download .Q Button -->
+      <button id="downloadBtn" class="btn btn-download" style="display: none;">
+        <span>📥</span>
+        <span id="downloadBtnText">Download .Q Stamp File (157 Bytes)</span>
+      </button>
     </div>
 
     <!-- Job Submission Card -->
@@ -288,7 +308,6 @@
   </div>
 
   <script>
-    // System Constants: Oasis Sapphire Testnet Chain ID is 23295 (0x5aff)
     const SAPPHIRE_CHAIN_HEX = "0x5aff";
     const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
     const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
@@ -305,10 +324,14 @@
     let contract = null;
     let userAddress = null;
     let selectedFileSize = 11286;
+    let currentStampBytes = null;
+    let currentSeq = 0;
 
     const connectBtn = document.getElementById('connectBtn');
     const submitBtn = document.getElementById('submitBtn');
     const refreshBtn = document.getElementById('refreshBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const downloadBtnText = document.getElementById('downloadBtnText');
     const statusBox = document.getElementById('statusBox');
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
@@ -329,8 +352,7 @@
           params: [{ chainId: SAPPHIRE_CHAIN_HEX }],
         });
       } catch (switchError) {
-        // Code 4902 means the chain has not been added to MetaMask yet
-        if (switchError.code === 4902 || switchError?.data?.originalError?.code === 4902) {
+        if (switchError.code === 4902) {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
@@ -366,7 +388,7 @@
         contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
         document.getElementById('userAddr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('networkStatus').innerText = "Connected (Sapphire Testnet)";
+        document.getElementById('networkStatus').innerText = "Connected";
         document.getElementById('networkStatus').style.color = "var(--success)";
         document.getElementById('accountInfo').style.display = "block";
         connectBtn.style.display = "none";
@@ -392,33 +414,56 @@
       if (!contract || !userAddress) return;
       try {
         const slot = await contract.readSlotA(userAddress);
+        currentSeq = slot.seq;
         document.getElementById('onchainSeq').innerText = slot.seq;
         document.getElementById('onchainMetric').innerText = `${slot.metric} bytes`;
 
         const blobBytes = ethers.utils.arrayify(slot.blob);
         if (blobBytes.length === 157) {
+          currentStampBytes = blobBytes;
           document.getElementById('onchainStamp').innerText = slot.blob;
+          downloadBtn.style.display = "flex";
+          downloadBtnText.innerText = `Download .Q Stamp (Seq ${slot.seq} • 157 Bytes)`;
         } else if (blobBytes.length > 0) {
+          currentStampBytes = blobBytes;
           document.getElementById('onchainStamp').innerText = `${slot.blob} (${blobBytes.length} bytes)`;
+          downloadBtn.style.display = "flex";
+          downloadBtnText.innerText = `Download Stamp (${blobBytes.length} Bytes)`;
         } else {
+          currentStampBytes = null;
           document.getElementById('onchainStamp').innerText = "No root stamp anchored yet.";
+          downloadBtn.style.display = "none";
         }
       } catch (err) {
         console.error("Failed to read slot:", err);
       }
     }
 
-    // Drag and Drop handlers
+    // Direct binary download for .Q stamp file
+    downloadBtn.addEventListener('click', () => {
+      if (!currentStampBytes || currentStampBytes.length === 0) return;
+
+      const blob = new Blob([currentStampBytes], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payload_seq${currentSeq}.Q`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
     dropzone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files);
     });
     fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length) handleFile(e.target.files[0]);
+      if (e.target.files.length) handleFile(e.target.files);
     });
 
     function handleFile(file) {
@@ -426,7 +471,6 @@
       fileMeta.innerText = `Selected: ${file.name} (${file.size.toLocaleString()} bytes)`;
     }
 
-    // Submit openSessionA
     submitBtn.addEventListener('click', async () => {
       if (!contract || !signer) return;
 
@@ -440,23 +484,39 @@
         const tx = await contract.openSessionA(
           selectedFileSize,
           ENCLAVE_SIGNER,
-          2, // Mode 2: Strict Root Anchoring
+          2,
           salt,
           extKey,
           { value: ethers.utils.parseEther("5.0") }
         );
 
-        setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block confirmation...`, "info");
+        setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block...`, "info");
 
         const receipt = await tx.wait();
-        setStatus(`Confirmed in block ${receipt.blockNumber}! Workload submitted to TEE enclave.`, "success");
+        setStatus(`Confirmed in block ${receipt.blockNumber}! Workload submitted to TEE enclave. Polling for hardware attestation...`, "info");
 
         await updateBalance();
-        await loadOnChainSlot();
+
+        // Poll for TEE syncSlotA confirmation
+        const initialSeq = currentSeq;
+        let pollCount = 0;
+        const pollInterval = setInterval(async () => {
+          pollCount++;
+          await loadOnChainSlot();
+          if (currentSeq > initialSeq) {
+            clearInterval(pollInterval);
+            setStatus(`🏆 Success! Sequence ${currentSeq} anchored on-chain. Click the green button above to download your .Q stamp.`, "success");
+            submitBtn.disabled = false;
+          } else if (pollCount >= 20) {
+            clearInterval(pollInterval);
+            setStatus(`Session confirmed on-chain. Waiting for TEE runner to process. Click 'Refresh' when ready.`, "info");
+            submitBtn.disabled = false;
+          }
+        }, 3000);
+
       } catch (err) {
         console.error(err);
         setStatus("Transaction rejected or failed: " + (err.reason || err.message || err), "error");
-      } finally {
         submitBtn.disabled = false;
       }
     });
