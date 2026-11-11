@@ -1,91 +1,477 @@
-import os
-from web3 import Web3
-from eth_account import Account
-from dotenv import load_dotenv
-
-load_dotenv('.env.confidential')
-
-RPC_URL = os.environ.get('SAPPHIRE_TESTNET_RPC', 'https://testnet.sapphire.oasis.io')
-LEDGER_ADDR = Web3.to_checksum_address(os.environ['LEDGER_CONTRACT_ADDR'].strip())
-DEPLOYER_KEY = os.environ.get('DEPLOYER_PRIVATE_KEY', os.environ.get('DEPLOYER_PRIV_KEY', '')).strip()
-ENCLAVE_KEY = os.environ.get('ENCLAVE_PRIVATE_KEY', os.environ.get('ENCLAVE_PRIV_KEY', '')).strip()
-
-w3 = Web3(Web3.HTTPProvider(RPC_URL))
-deployer_acct = Account.from_key(DEPLOYER_KEY)
-enclave_acct = Account.from_key(ENCLAVE_KEY)
-
-ABI = [
-    {
-        "inputs": [
-            {"name": "account", "type": "address"},
-            {"name": "seq", "type": "uint32"},
-            {"name": "metric", "type": "uint64"},
-            {"name": "blobHash", "type": "bytes32"}
-        ],
-        "name": "hashPayloadA",
-        "outputs": [{"name": "", "type": "bytes32"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {"name": "account", "type": "address"},
-            {"name": "seq", "type": "uint32"},
-            {"name": "metric", "type": "uint64"},
-            {"name": "blob", "type": "bytes"},
-            {"name": "sig", "type": "bytes"}
-        ],
-        "name": "syncSlotA",
-        "outputs": [],
-        "stateMutability": "payable",
-        "type": "function"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confidential State Portal | Oasis Sapphire</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --accent: #0092f6;
+      --accent-hover: #0077c8;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --error: #ef4444;
+      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     }
-]
 
-contract = w3.eth.contract(address=LEDGER_ADDR, abi=ABI)
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
 
-# Read the generated 157-byte stamp
-with open('vaults/sample.Q', 'rb') as f:
-    q_bytes = f.read()
+    .container {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
 
-assert len(q_bytes) == 157, f"Stamp size is {len(q_bytes)}B"
-print(f"[✓] Verified vaults/sample.Q: exactly {len(q_bytes)} Bytes")
+    header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
 
-# 1. Enclave signs EIP-712 payload digest
-q_hash = Web3.keccak(q_bytes)
-digest = contract.functions.hashPayloadA(deployer_acct.address, 1, 11286, q_hash).call()
-sig = enclave_acct.unsafe_sign_hash(digest).signature
-print(f"[✓] Hardware Enclave Signature: 0x{sig.hex()[:16]}...")
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+    }
 
-# 2. Submit syncSlotA transaction
-print("[*] Submitting syncSlotA transaction to Oasis Sapphire Testnet...")
-tx = contract.functions.syncSlotA(
-    deployer_acct.address,
-    1,
-    11286,
-    q_bytes,
-    sig
-).build_transaction({
-    'from': deployer_acct.address,
-    'nonce': w3.eth.get_transaction_count(deployer_acct.address),
-    'gas': 450000,
-    'gasPrice': w3.eth.gas_price,
-    'chainId': 23295,
-})
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
 
-signed_tx = deployer_acct.sign_transaction(tx)
-tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-print(f"[*] Broadcast tx: 0x{tx_hash.hex()}. Awaiting confirmation...")
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 9999px;
+      background: rgba(0, 146, 246, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(0, 146, 246, 0.3);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
 
-receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
 
-print("\n====================================================================")
-print(" 🏆 LIVE OASIS SAPPHIRE TESTNET ANCHOR SUCCESSFUL!")
-print(f" Transaction Hash: 0x{tx_hash.hex()}")
-print(f" Block Number:     {receipt.blockNumber}")
-print(f" Gas Used:         {receipt.gasUsed}")
-print(f" Anchored Slot:    Sequence 1")
-print(f" Anchored Stamp:   0x{q_bytes.hex()}")
-status_str = "CONFIRMED (SUCCESS)" if receipt.status == 1 else "FAILED"
-print(f" Status:           {status_str}")
-print("====================================================================")
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn {
+      background-color: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      width: 100%;
+    }
+
+    .btn:hover:not(:disabled) {
+      background-color: var(--accent-hover);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+      margin-bottom: 1rem;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background-color: rgba(0, 146, 246, 0.04);
+    }
+
+    .dropzone p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .dropzone span {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--text-muted);
+    }
+
+    .info-val {
+      font-family: var(--font-mono);
+      font-weight: 500;
+      word-break: break-all;
+      text-align: right;
+      max-width: 65%;
+    }
+
+    .stamp-box {
+      background-color: #0d131f;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #38bdf8;
+      word-break: break-all;
+      line-height: 1.4;
+      margin-top: 0.5rem;
+      user-select: all;
+    }
+
+    .status-msg {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      display: none;
+      word-break: break-all;
+    }
+
+    .status-msg.active {
+      display: block;
+    }
+
+    .status-msg.info {
+      background: rgba(0, 146, 246, 0.1);
+      color: #60a5fa;
+      border: 1px solid rgba(0, 146, 246, 0.2);
+    }
+
+    .status-msg.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-msg.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge">Oasis Sapphire Testnet</div>
+      <h1>Confidential State Portal</h1>
+      <p>Secure hardware TEE state verification & 157-byte root anchoring</p>
+    </header>
+
+    <!-- Wallet Connection Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>Wallet Status</span>
+        <span id="networkStatus" style="font-size: 0.8rem; color: var(--text-muted);">Disconnected</span>
+      </div>
+      <button id="connectBtn" class="btn">Connect MetaMask</button>
+      <div id="accountInfo" style="display: none; margin-top: 1rem;">
+        <div class="info-row">
+          <span class="info-label">Address</span>
+          <span id="userAddr" class="info-val">0x...</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Balance</span>
+          <span id="userBal" class="info-val">0 TEST</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active State Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>Anchored Account State</span>
+        <button id="refreshBtn" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.8rem;">Refresh</button>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Confirmed Sequence</span>
+        <span id="onchainSeq" class="info-val">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Registered Metric</span>
+        <span id="onchainMetric" class="info-val">-</span>
+      </div>
+      <div class="info-row" style="flex-direction: column; gap: 0.25rem;">
+        <span class="info-label">157-Byte Root Stamp</span>
+        <div id="onchainStamp" class="stamp-box">No stamp anchored yet.</div>
+      </div>
+    </div>
+
+    <!-- Job Submission Card -->
+    <div class="card">
+      <div class="card-title">Anchor New Payload</div>
+      <div id="dropzone" class="dropzone">
+        <p>Drag & drop any file here, or <span>browse</span></p>
+        <p id="fileMeta" style="margin-top: 0.5rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text);"></p>
+        <input type="file" id="fileInput" style="display: none;">
+      </div>
+
+      <button id="submitBtn" class="btn" disabled>Anchor File (5.0 TEST)</button>
+      <div id="statusBox" class="status-msg"></div>
+    </div>
+
+    <footer>
+      Contract: <a id="contractLink" href="#" target="_blank">0xfD0D6E...8893</a> |
+      <a href="https://faucet.testnet.oasis.io/" target="_blank">Get Testnet TEST</a>
+    </footer>
+  </div>
+
+  <script>
+    // System Constants
+    const SAPPHIRE_CHAIN_ID = 23295;
+    const SAPPHIRE_CHAIN_HEX = "0x5b07";
+    const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
+    const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
+    const RPC_URL = "https://testnet.sapphire.oasis.io";
+    const EXPLORER_URL = "https://testnet.explorer.sapphire.oasis.io";
+
+    const ABI = [
+      "function openSessionA(uint64 metric, address nodeSigner, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId)",
+      "function readSlotA(address account) external view returns (uint32 seq, uint64 metric, bytes blob)"
+    ];
+
+    let provider = null;
+    let signer = null;
+    let contract = null;
+    let userAddress = null;
+    let selectedFileSize = 11286; // default reference size
+
+    const connectBtn = document.getElementById('connectBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const statusBox = document.getElementById('statusBox');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileMeta = document.getElementById('fileMeta');
+
+    document.getElementById('contractLink').href = `${EXPLORER_URL}/address/${CONTRACT_ADDR}`;
+    document.getElementById('contractLink').innerText = `${CONTRACT_ADDR.slice(0, 8)}...${CONTRACT_ADDR.slice(-6)}`;
+
+    function setStatus(msg, type = 'info') {
+      statusBox.className = `status-msg active ${type}`;
+      statusBox.innerHTML = msg;
+    }
+
+    async function switchNetwork() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: SAPPHIRE_CHAIN_HEX }],
+        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: SAPPHIRE_CHAIN_HEX,
+              chainName: 'Oasis Sapphire Testnet',
+              nativeCurrency: { name: 'TEST', symbol: 'TEST', decimals: 18 },
+              rpcUrls: [RPC_URL],
+              blockExplorerUrls: [EXPLORER_URL]
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask is required to use this portal.");
+        return;
+      }
+
+      try {
+        connectBtn.disabled = true;
+        connectBtn.innerText = "Connecting...";
+
+        await switchNetwork();
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
+
+        document.getElementById('userAddr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        document.getElementById('networkStatus').innerText = "Connected";
+        document.getElementById('networkStatus').style.color = "var(--success)";
+        document.getElementById('accountInfo').style.display = "block";
+        connectBtn.style.display = "none";
+        submitBtn.disabled = false;
+
+        await updateBalance();
+        await loadOnChainSlot();
+      } catch (err) {
+        console.error(err);
+        connectBtn.disabled = false;
+        connectBtn.innerText = "Connect MetaMask";
+        setStatus("Connection failed: " + (err.message || err), "error");
+      }
+    }
+
+    async function updateBalance() {
+      if (!provider || !userAddress) return;
+      const bal = await provider.getBalance(userAddress);
+      document.getElementById('userBal').innerText = `${parseFloat(ethers.utils.formatEther(bal)).toFixed(3)} TEST`;
+    }
+
+    async function loadOnChainSlot() {
+      if (!contract || !userAddress) return;
+      try {
+        const slot = await contract.readSlotA(userAddress);
+        document.getElementById('onchainSeq').innerText = slot.seq;
+        document.getElementById('onchainMetric').innerText = `${slot.metric} bytes`;
+
+        const blobBytes = ethers.utils.arrayify(slot.blob);
+        if (blobBytes.length === 157) {
+          document.getElementById('onchainStamp').innerText = slot.blob;
+        } else if (blobBytes.length > 0) {
+          document.getElementById('onchainStamp').innerText = `${slot.blob} (${blobBytes.length} bytes)`;
+        } else {
+          document.getElementById('onchainStamp').innerText = "No root stamp anchored yet.";
+        }
+      } catch (err) {
+        console.error("Failed to read slot:", err);
+      }
+    }
+
+    // Drag and Drop
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      selectedFileSize = file.size;
+      fileMeta.innerText = `Selected: ${file.name} (${file.size.toLocaleString()} bytes)`;
+    }
+
+    // Submit openSessionA
+    submitBtn.addEventListener('click', async () => {
+      if (!contract || !signer) return;
+
+      try {
+        submitBtn.disabled = true;
+        setStatus("Confirming transaction in MetaMask...", "info");
+
+        // Generate 32-byte salt and 64-byte extKey
+        const salt = ethers.utils.randomBytes(32);
+        const extKey = ethers.utils.randomBytes(64);
+
+        const tx = await contract.openSessionA(
+          selectedFileSize,
+          ENCLAVE_SIGNER,
+          2, // Mode 2: Strict Root Anchoring
+          salt,
+          extKey,
+          { value: ethers.utils.parseEther("5.0") }
+        );
+
+        setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block...`, "info");
+
+        const receipt = await tx.wait();
+        setStatus(`Confirmed in block ${receipt.blockNumber}! TEE enclave has queued the workload.`, "success");
+
+        await updateBalance();
+        await loadOnChainSlot();
+      } catch (err) {
+        console.error(err);
+        setStatus("Transaction rejected or failed: " + (err.reason || err.message || err), "error");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    connectBtn.addEventListener('click', connectWallet);
+    refreshBtn.addEventListener('click', async () => {
+      await updateBalance();
+      await loadOnChainSlot();
+    });
+
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', () => window.location.reload());
+      window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+  </script>
+</body>
+</html>
