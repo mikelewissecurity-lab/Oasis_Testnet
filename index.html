@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confidential State Portal | Oasis Sapphire</title>
+  <title>Confidential State Portal | Oasis Sapphire Testnet</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <style>
     :root {
@@ -288,9 +288,8 @@
   </div>
 
   <script>
-    // System Constants
-    const SAPPHIRE_CHAIN_ID = 23295;
-    const SAPPHIRE_CHAIN_HEX = "0x5b07";
+    // System Constants: Oasis Sapphire Testnet Chain ID is 23295 (0x5aff)
+    const SAPPHIRE_CHAIN_HEX = "0x5aff";
     const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
     const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
     const RPC_URL = "https://testnet.sapphire.oasis.io";
@@ -305,7 +304,7 @@
     let signer = null;
     let contract = null;
     let userAddress = null;
-    let selectedFileSize = 11286; // default reference size
+    let selectedFileSize = 11286;
 
     const connectBtn = document.getElementById('connectBtn');
     const submitBtn = document.getElementById('submitBtn');
@@ -330,7 +329,8 @@
           params: [{ chainId: SAPPHIRE_CHAIN_HEX }],
         });
       } catch (switchError) {
-        if (switchError.code === 4902) {
+        // Code 4902 means the chain has not been added to MetaMask yet
+        if (switchError.code === 4902 || switchError?.data?.originalError?.code === 4902) {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
@@ -366,7 +366,7 @@
         contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
 
         document.getElementById('userAddr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('networkStatus').innerText = "Connected";
+        document.getElementById('networkStatus').innerText = "Connected (Sapphire Testnet)";
         document.getElementById('networkStatus').style.color = "var(--success)";
         document.getElementById('accountInfo').style.display = "block";
         connectBtn.style.display = "none";
@@ -408,7 +408,7 @@
       }
     }
 
-    // Drag and Drop
+    // Drag and Drop handlers
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
@@ -434,7 +434,6 @@
         submitBtn.disabled = true;
         setStatus("Confirming transaction in MetaMask...", "info");
 
-        // Generate 32-byte salt and 64-byte extKey
         const salt = ethers.utils.randomBytes(32);
         const extKey = ethers.utils.randomBytes(64);
 
@@ -447,10 +446,10 @@
           { value: ethers.utils.parseEther("5.0") }
         );
 
-        setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block...`, "info");
+        setStatus(`Transaction broadcast: <a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a>. Awaiting block confirmation...`, "info");
 
         const receipt = await tx.wait();
-        setStatus(`Confirmed in block ${receipt.blockNumber}! TEE enclave has queued the workload.`, "success");
+        setStatus(`Confirmed in block ${receipt.blockNumber}! Workload submitted to TEE enclave.`, "success");
 
         await updateBalance();
         await loadOnChainSlot();
