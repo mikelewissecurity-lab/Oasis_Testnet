@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TEE Portal — Oasis Sapphire</title>
+  <title>Confidential Enclave Portal — Oasis Sapphire</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
   <style>
     :root {
@@ -15,6 +15,7 @@
       --text: #f3f4f6;
       --text-muted: #9ca3af;
       --danger: #ef4444;
+      --warning: #f59e0b;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -80,6 +81,18 @@
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-secondary { background: #1f2937; color: #fff; }
     .btn-secondary:hover { background: #374151; }
+    .btn-ping {
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #334155;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .btn-ping:hover { background: #334155; color: #7dd3fc; }
     .status-box {
       background: #080c14;
       border: 1px solid var(--border);
@@ -88,7 +101,7 @@
       font-family: var(--font-mono);
       font-size: 0.8rem;
       color: #38bdf8;
-      max-height: 220px;
+      max-height: 240px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-all;
@@ -109,39 +122,64 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   <header>
-    <h1>Enclave Gateway</h1>
+    <h1>Confidential Enclave Gateway</h1>
     <span class="badge">Oasis Sapphire Testnet • Intel TDX Confidential VM</span>
   </header>
 
-  <!-- Wallet & Network Status -->
+  <!-- Enclave Gateway Health & Ping -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="meta-row">
+      <div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Enclave Gateway Endpoint</div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.25rem;">
+          <input type="text" id="gatewayUrl" value="https://p8080.m1874.opf-testnet-rofl-9.rofl.app" style="width: 380px; font-family: var(--font-mono); font-size: 0.85rem;">
+          <button class="btn-ping" onclick="pingGateway()">⚡ Ping Gateway</button>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Gateway Status</div>
+        <div id="serverStatusBadge" style="font-family: var(--font-mono); font-weight: 600; color: var(--warning); margin-top: 0.25rem;">
+          Not Checked
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wallet Connection -->
+  <div class="card">
+    <div class="meta-row">
       <div>
         <div style="font-size: 0.85rem; color: var(--text-muted);">Connected Account</div>
-        <div id="walletAddr" style="font-family: var(--font-mono); font-weight: 600;">Not connected</div>
+        <div id="walletAddr" style="font-family: var(--font-mono); font-weight: 600; margin-top: 0.25rem;">Not connected</div>
       </div>
       <button id="btnConnect" class="btn btn-secondary" style="width: auto;" onclick="connectWallet()">Connect Wallet</button>
     </div>
   </div>
 
-  <!-- Shared Cryptographic Credentials (Seed Injection) -->
+  <!-- Entropy & Seed Injection -->
   <div class="card">
-    <h2>1. Seed Injection (Deterministic Entropy)</h2>
+    <h2>1. Seed & Entropy Injection</h2>
     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-      Your username and passphrase are injected directly into Intel TDX volatile memory to compute the isolated SHAKE-256 rope stream seed:
-      <code style="color: var(--accent);">Sha256(PREFIX : user : pass : ENCLAVE_AUTH_KEY)</code>. They are wiped immediately after the operation and never stored.
+      Your username and passphrase inject client-side entropy into the enclave's volatile RAM to derive isolated, deterministic key streams. Plaintexts are immediately wiped from memory after execution and are never written to disk.
     </p>
     <div class="grid">
       <div class="form-group">
         <label for="username">Username / Identity</label>
         <input type="text" id="username" placeholder="guest" value="guest">
-        <div class="help-text">Leave as "guest" or enter your unique identifier</div>
+        <div class="help-text">Leave as "guest" or specify a custom user handle</div>
       </div>
       <div class="form-group">
         <label for="password">Password / Passphrase</label>
@@ -149,15 +187,15 @@
           <input type="password" id="password" placeholder="guest" value="guest">
           <span style="position: absolute; right: 10px; top: 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-muted);" onclick="togglePassword()">SHOW</span>
         </div>
-        <div class="help-text">Used for bit-for-bit key derivation</div>
+        <div class="help-text">Entropy source for bit-for-bit mathematical derivation</div>
       </div>
     </div>
   </div>
 
   <!-- Operation Tabs -->
   <div class="tabs">
-    <button class="tab-btn active" id="tabFoldBtn" onclick="switchTab('fold')">Fold File → 157B .Q Stamp</button>
-    <button class="tab-btn" id="tabRestoreBtn" onclick="switchTab('restore')">Restore .Q Stamp → Original File</button>
+    <button class="tab-btn active" id="tabFoldBtn" onclick="switchTab('fold')">Fold File → 157B Stamp</button>
+    <button class="tab-btn" id="tabRestoreBtn" onclick="switchTab('restore')">Restore 157B Stamp → Original File</button>
   </div>
 
   <!-- Tab A: Fold Payload -->
@@ -172,11 +210,11 @@
 
   <!-- Tab B: Restore Payload -->
   <div class="card" id="restoreCard" style="display: none;">
-    <h2>Restore Bit-for-Bit from .Q Stamp</h2>
+    <h2>Restore Bit-for-Bit from Stamp</h2>
     <div class="grid">
       <div class="form-group">
-        <label for="restoreFile">Select 157-Byte .Q Stamp File</label>
-        <input type="file" id="restoreFile" accept=".Q,.bin">
+        <label for="restoreFile">Select 157-Byte Stamp File</label>
+        <input type="file" id="restoreFile" accept=".stamp,.Q,.bin">
       </div>
       <div class="form-group">
         <label for="restoreSlotId">Anchor Slot ID (Sequence #)</label>
@@ -195,7 +233,6 @@
 
 <script>
   // Configuration
-  const GATEWAY_URL = "https://p8080.m1874.opf-testnet-rofl-9.rofl.app";
   const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
   const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
   const SAPPHIRE_CHAIN_ID = 23295;
@@ -210,6 +247,10 @@
   let provider = null;
   let signer = null;
   let userAddress = null;
+
+  function getGatewayUrl() {
+    return document.getElementById("gatewayUrl").value.trim().replace(/\/+$/, "");
+  }
 
   function log(msg) {
     const el = document.getElementById("consoleLog");
@@ -228,6 +269,33 @@
     document.getElementById("restoreCard").style.display = tab === "restore" ? "block" : "none";
     document.getElementById("tabFoldBtn").classList.toggle("active", tab === "fold");
     document.getElementById("tabRestoreBtn").classList.toggle("active", tab === "restore");
+  }
+
+  // --- GATEWAY PING / HEALTH CHECK ---
+  async function pingGateway() {
+    const url = getGatewayUrl();
+    const badge = document.getElementById("serverStatusBadge");
+    badge.innerText = "Checking...";
+    badge.style.color = "var(--warning)";
+    log(`Pinging enclave gateway at: ${url}/health...`);
+
+    const t0 = performance.now();
+    try {
+      const resp = await fetch(`${url}/health`, { method: "GET" });
+      const latency = Math.round(performance.now() - t0);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      badge.innerText = `Online (${latency}ms)`;
+      badge.style.color = "var(--accent)";
+      log(`[✓] Gateway Status: OK (${latency}ms)`);
+      log(`    Enclave Signer: ${data.enclave_signer}`);
+      log(`    Contract:       ${data.contract}`);
+    } catch (err) {
+      badge.innerText = "Unreachable";
+      badge.style.color = "var(--danger)";
+      log(`[!] Ping Failed: ${err.message}. Ensure the enclave container is online.`);
+    }
   }
 
   async function connectWallet() {
@@ -268,6 +336,7 @@
     const file = fileInput.files[0];
     const username = document.getElementById("username").value.trim() || "guest";
     const password = document.getElementById("password").value.trim() || "guest";
+    const gateway = getGatewayUrl();
 
     try {
       log(`Initiating on-chain session for ${file.name} (${file.size} bytes)...`);
@@ -298,25 +367,25 @@
       formData.append("password", password);
       formData.append("file", file);
 
-      const resp = await fetch(`${GATEWAY_URL}/api/fold`, {
+      const resp = await fetch(`${gateway}/api/fold`, {
         method: "POST",
         body: formData
       });
 
       if (!resp.ok) throw new Error(`Gateway returned HTTP ${resp.status}`);
 
-      const qBlob = await resp.blob();
+      const stampBlob = await resp.blob();
       const anchorTx = resp.headers.get("X-Anchor-Tx") || "N/A";
       const slotId = resp.headers.get("X-Slot-Id") || "1";
 
-      log(`[✓] SUCCESS: Folded into 157-byte .Q stamp!`);
+      log(`[✓] SUCCESS: Folded into 157-byte stamp!`);
       log(`Slot ID: ${slotId} | Settlement Tx: ${anchorTx}`);
 
-      // Auto-download .Q file
-      const downloadUrl = window.URL.createObjectURL(qBlob);
+      // Auto-download stamp file
+      const downloadUrl = window.URL.createObjectURL(stampBlob);
       const a = document.createElement("a");
       a.href = downloadUrl;
-      a.download = `${file.name}.Q`;
+      a.download = `${file.name}.stamp`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -329,12 +398,13 @@
   async function executeRestore() {
     if (!signer) await connectWallet();
     const fileInput = document.getElementById("restoreFile");
-    if (!fileInput.files.length) return alert("Select a .Q stamp file first.");
+    if (!fileInput.files.length) return alert("Select a stamp file first.");
 
-    const qfile = fileInput.files[0];
+    const stampFile = fileInput.files[0];
     const slotId = parseInt(document.getElementById("restoreSlotId").value) || 1;
     const username = document.getElementById("username").value.trim() || "guest";
     const password = document.getElementById("password").value.trim() || "guest";
+    const gateway = getGatewayUrl();
 
     try {
       log(`Opening restore session on-chain for Slot #${slotId}...`);
@@ -357,8 +427,8 @@
       const refId = receipt.logs[0].topics[1];
       log(`Restore session open! refId = ${refId}`);
 
-      // 2. Submit .Q Stamp & Seed to Enclave
-      log(`Sending .Q Stamp and credentials to TEE Enclave...`);
+      // 2. Submit Stamp & Seed to Enclave
+      log(`Sending stamp and credentials to TEE Enclave...`);
       const formData = new FormData();
       formData.append("refId", refId);
       formData.append("account", userAddress);
@@ -367,9 +437,9 @@
       formData.append("rEnd", "1000");
       formData.append("username", username);
       formData.append("password", password);
-      formData.append("qfile", qfile);
+      formData.append("qfile", stampFile);
 
-      const resp = await fetch(`${GATEWAY_URL}/api/restore`, {
+      const resp = await fetch(`${gateway}/api/restore`, {
         method: "POST",
         body: formData
       });
@@ -380,7 +450,7 @@
       const restoreTx = resp.headers.get("X-Restore-Tx") || "N/A";
       const origName = resp.headers.get("X-Original-Filename") || "restored_file.bin";
 
-      log(`[✓] SUCCESS: Reconstructed bit-for-bit from .Q stamp!`);
+      log(`[✓] SUCCESS: Reconstructed bit-for-bit from stamp!`);
       log(`Restore Tx: ${restoreTx} | File: ${origName}`);
 
       // Auto-download restored file
@@ -395,6 +465,11 @@
       log(`[!] Restore Failed: ${err.message}`);
     }
   }
+
+  // Auto-ping gateway on page load
+  window.addEventListener("DOMContentLoaded", () => {
+    pingGateway();
+  });
 </script>
 
 </body>
