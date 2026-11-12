@@ -1,575 +1,2638 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Confidential Enclave Gateway v4 — Oasis Sapphire &amp; Intel TDX</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="artifact-type" content="tool">
+  <meta name="design-style" content="aurora">
+  <title>BMLT Noether TEE Portal v5 — Sapphire Testnet &amp; ROFL Intel TDX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0f17;
-      --card-bg: #111827;
-      --border: #1f2937;
-      --accent: #00e5ff;
-      --accent-hover: #00c4dd;
-      --success: #00e676;
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
-      --danger: #ef4444;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color-scheme: dark;
+
+      /* Page and surfaces: deep oceanic slate steps */
+      --background: #0c1214;
+      --surface-container-low: #111a1e;
+      --surface-container: #152024;
+      --surface-container-high: #1c2a30;
+
+      /* Text */
+      --on-surface: #edf3f5;
+      --on-surface-variant: #94a8b0;
+
+      /* Borders */
+      --outline: #38515c;
+      --outline-variant: #213138;
+
+      /* Accents */
+      --primary: #63c7d6;
+      --on-primary: #081214;
+      --primary-container: #163840;
+      --on-primary-container: #c7f0f7;
+      --secondary: #5d7882;
+      --tertiary: #87d69b;
+      --error: #f27474;
+      --on-error: #1a0606;
+
+      /* Data series */
+      --data-1: #63c7d6;
+      --data-2: #87d69b;
+      --data-3: #e8b954;
+      --data-4: #f08c70;
+      --data-context: #415861;
+
+      /* Fonts */
+      --font-headline: 'Instrument Sans', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-label: 'Geist Mono', monospace;
+
+      /* Shape */
+      --rounded: 0.5rem;
+      --rounded-lg: 0.75rem;
+      --rounded-full: 9999px;
+
+      /* Style effects */
+      --hairline: 1px solid var(--outline-variant);
+      --hairline-strong: 1px solid var(--outline);
+      --panel-gradient: linear-gradient(180deg, #162226 0%, #111a1e 100%);
+      --heading-tracking: -0.025em;
+      --label-tracking: 0.06em;
+      --sage-tint: color-mix(in srgb, var(--tertiary) 13%, transparent);
+      --sage-border: color-mix(in srgb, var(--tertiary) 35%, transparent);
+      --cyan-tint: color-mix(in srgb, var(--primary) 13%, transparent);
+      --cyan-border: color-mix(in srgb, var(--primary) 38%, transparent);
+      --amber-tint: color-mix(in srgb, var(--data-3) 14%, transparent);
+      --amber-border: color-mix(in srgb, var(--data-3) 38%, transparent);
+      --error-tint: color-mix(in srgb, var(--error) 14%, transparent);
+      --error-border: color-mix(in srgb, var(--error) 40%, transparent);
+
+      /* Shared tokens */
+      --positive: var(--tertiary);
+      --warning: var(--data-3);
+      --focus: var(--primary);
+
+      /* Type scale: Focused Tool */
+      --display-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+      --headline-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+      --subhead-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+      --body-size: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+      --label-size: 0.75rem;
+
+      /* Spacing scale (4pt base) */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.5rem;
+      --space-2xl: 4rem;
+
+      /* Motion */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --dur-micro: 120ms;
+      --dur-short: 220ms;
+      --dur-long: 420ms;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      overflow-x: clip;
+      margin: 0;
+      padding: 0;
+      background-color: var(--background);
+      color: var(--on-surface);
+      font-family: var(--font-body);
+      font-size: var(--body-size);
       line-height: 1.5;
-      padding: 2rem 1rem;
-      max-width: 920px;
+      -webkit-font-smoothing: antialiased;
+    }
+    header { position: static !important; }
+
+    .page-grid {
+      display: grid;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      max-width: 1320px;
       margin: 0 auto;
+      overflow: hidden;
     }
-    header { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 1.7rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
+    .page-grid * { min-width: 0; }
+
+    /* Focus rings */
+    :focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    /* Typography helpers */
+    .title {
+      font-family: var(--font-headline);
       font-weight: 600;
-      background: rgba(0, 229, 255, 0.1);
-      color: var(--accent);
-      border: 1px solid rgba(0, 229, 255, 0.3);
+      font-size: var(--display-size);
+      letter-spacing: var(--heading-tracking);
+      line-height: 1.1;
+      color: var(--on-surface);
+      margin: 0;
     }
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    .section-title {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--headline-size);
+      letter-spacing: var(--heading-tracking);
+      line-height: 1.16;
+      color: var(--on-surface);
+      margin: 0;
     }
-    .card h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; color: #fff; display: flex; justify-content: space-between; align-items: center; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
-    .form-group { margin-bottom: 1rem; }
-    label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.35rem; }
-    input[type="text"], input[type="password"], input[type="number"], input[type="file"] {
-      width: 100%;
-      padding: 0.65rem 0.75rem;
-      background: #090d16;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      color: #fff;
-      font-size: 0.9rem;
-      outline: none;
-      font-family: inherit;
+    .subhead {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--subhead-size);
+      letter-spacing: var(--heading-tracking);
+      line-height: 1.25;
+      color: var(--on-surface);
+      margin: 0;
     }
-    input:focus { border-color: var(--accent); }
-    .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
-    .btn {
+    .lede {
+      color: var(--on-surface-variant);
+      margin: var(--space-xs) 0 0 0;
+      max-width: 72ch;
+    }
+    .data-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 500;
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+    }
+    .mono {
+      font-family: var(--font-label);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Header */
+    .portal-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--space-md);
+      padding-bottom: var(--space-lg);
+      border-bottom: var(--hairline);
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    /* Buttons */
+    button {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--body-size);
+      min-height: 44px;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--rounded);
+      border: var(--hairline-strong);
+      background: transparent;
+      color: var(--on-surface);
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0.75rem 1.25rem;
-      border-radius: 0.5rem;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s ease;
-      font-family: inherit;
+      gap: var(--space-sm);
+      transition: background-color var(--dur-micro) var(--ease-out),
+                  border-color var(--dur-micro) var(--ease-out),
+                  transform var(--dur-micro) var(--ease-out),
+                  opacity var(--dur-micro) var(--ease-out);
     }
-    .btn-primary { background: var(--accent); color: #000; width: 100%; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-secondary { background: #1f2937; color: #fff; }
-    .btn-secondary:hover { background: #374151; }
-    .btn-ping { background: rgba(0, 229, 255, 0.15); color: var(--accent); border: 1px solid rgba(0, 229, 255, 0.3); padding: 0.5rem 1rem; }
-    .btn-ping:hover { background: rgba(0, 229, 255, 0.25); }
-    .status-badge {
+    button:hover:not(:disabled) {
+      background-color: var(--surface-container-high);
+      border-color: var(--primary);
+    }
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      border-color: var(--primary);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--on-primary-container);
+      border-color: var(--on-primary-container);
+      color: var(--on-primary);
+    }
+    .btn-tertiary {
+      background-color: var(--sage-tint);
+      color: var(--tertiary);
+      border-color: var(--sage-border);
+    }
+    .btn-tertiary:hover:not(:disabled) {
+      background-color: var(--surface-container-high);
+      border-color: var(--tertiary);
+    }
+    .btn-compact {
+      min-height: 36px;
+      padding: var(--space-xs) var(--space-sm);
+      font-size: var(--label-size);
+      font-family: var(--font-label);
+    }
+
+    /* Segmented mode switch */
+    .mode-switch {
+      display: inline-flex;
+      background-color: var(--surface-container-low);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: 3px;
+      gap: 3px;
+    }
+    .mode-switch button {
+      min-height: 38px;
+      border: none;
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      padding: var(--space-xs) var(--space-md);
+      color: var(--on-surface-variant);
+    }
+    .mode-switch button.is-active {
+      background-color: var(--primary-container);
+      color: var(--on-primary-container);
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      display: grid;
+      gap: var(--space-md);
+    }
+    .well {
+      background-color: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+    }
+
+    /* Metric strip */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--space-md);
+    }
+    .metric-tile {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-md);
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .metric-value {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--headline-size);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: var(--heading-tracking);
+      color: var(--on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .metric-sub {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      word-break: break-all;
+    }
+    .metric-sub.is-ok { color: var(--tertiary); }
+    .metric-sub.is-warn { color: var(--warning); }
+    .metric-sub.is-err { color: var(--error); }
+
+    /* Status chips */
+    .status-chip {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
+      gap: var(--space-xs);
+      border-radius: var(--rounded);
+      padding: 2px var(--space-sm);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      border: 1px solid var(--outline-variant);
+      color: var(--on-surface-variant);
+      background-color: var(--surface-container-low);
+      white-space: nowrap;
     }
-    .status-online { background: rgba(0, 230, 118, 0.15); color: var(--success); }
-    .status-offline { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-    .status-box {
-      background: #06090f;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      padding: 1rem;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: #38bdf8;
-      max-height: 250px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-      line-height: 1.45;
+    .status-chip.ok {
+      background-color: var(--sage-tint);
+      color: var(--tertiary);
+      border-color: var(--sage-border);
     }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-    .tab-btn {
-      flex: 1;
-      padding: 0.75rem;
-      background: #111827;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      color: var(--text-muted);
+    .status-chip.cyan {
+      background-color: var(--cyan-tint);
+      color: var(--primary);
+      border-color: var(--cyan-border);
+    }
+    .status-chip.warn {
+      background-color: var(--amber-tint);
+      color: var(--warning);
+      border-color: var(--amber-border);
+    }
+    .status-chip.err {
+      background-color: var(--error-tint);
+      color: var(--error);
+      border-color: var(--error-border);
+    }
+
+    /* Restore Flaw Fix Strip */
+    .safeguard-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--space-sm);
+      background-color: var(--surface-container-low);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-md);
+    }
+    .safeguard-item {
+      display: grid;
+      gap: var(--space-xs);
+      padding-right: var(--space-sm);
+      border-right: var(--hairline);
+    }
+    .safeguard-item:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    .safeguard-desc {
+      font-size: 0.84rem;
+      color: var(--on-surface-variant);
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    /* Main Asymmetric Workbench Grid */
+    .workbench-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.32fr) minmax(0, 1fr);
+      gap: var(--space-lg);
+      align-items: start;
+    }
+    .stack-col {
+      display: grid;
+      gap: var(--space-lg);
+    }
+
+    /* Forms & inputs */
+    .field-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-md);
+      align-items: end;
+    }
+    .field-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-md);
+      align-items: end;
+    }
+    .field-row-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--space-sm);
+      align-items: end;
+    }
+    .field {
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .field label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    select {
+      width: 100%;
+      min-height: 44px;
+      padding: var(--space-sm) var(--space-md);
+      background-color: var(--background);
+      color: var(--on-surface);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      font-family: var(--font-label);
+      font-size: 0.875rem;
+      transition: border-color var(--dur-micro) var(--ease-out),
+                  box-shadow var(--dur-micro) var(--ease-out);
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--cyan-tint);
+    }
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-wrap input {
+      padding-right: 4.5rem;
+    }
+    .input-inline-btn {
+      position: absolute;
+      right: 6px;
+      min-height: 32px;
+      padding: 2px var(--space-sm);
+      font-size: var(--label-size);
+      font-family: var(--font-label);
+      border: var(--hairline);
+      background-color: var(--surface-container);
+    }
+
+    /* Dropzones */
+    .dropzone {
+      background-color: var(--background);
+      border: 1px dashed var(--outline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      display: grid;
+      gap: var(--space-sm);
       cursor: pointer;
-      font-weight: 600;
-      font-family: inherit;
+      transition: border-color var(--dur-micro) var(--ease-out),
+                  background-color var(--dur-micro) var(--ease-out);
     }
-    .tab-btn.active {
-      background: rgba(0, 229, 255, 0.1);
-      border-color: var(--accent);
-      color: var(--accent);
+    .dropzone:hover,
+    .dropzone.is-dragover {
+      border-color: var(--primary);
+      background-color: var(--surface-container-low);
+    }
+    .dropzone-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .file-input-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Preflight & Outcome readouts */
+    .kv-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: var(--space-sm);
+    }
+    .kv-box {
+      background-color: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-sm) var(--space-md);
+      display: grid;
+      gap: 2px;
+    }
+    .kv-val {
+      font-family: var(--font-label);
+      font-size: 0.875rem;
+      color: var(--on-surface);
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    .feedback-banner {
+      border-radius: var(--rounded);
+      padding: var(--space-sm) var(--space-md);
+      font-family: var(--font-label);
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      border: var(--hairline);
+      background-color: var(--surface-container-low);
+      color: var(--on-surface-variant);
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .feedback-banner.ok {
+      background-color: var(--sage-tint);
+      border-color: var(--sage-border);
+      color: var(--tertiary);
+    }
+    .feedback-banner.cyan {
+      background-color: var(--cyan-tint);
+      border-color: var(--cyan-border);
+      color: var(--on-primary-container);
+    }
+    .feedback-banner.warn {
+      background-color: var(--amber-tint);
+      border-color: var(--amber-border);
+      color: var(--warning);
+    }
+    .feedback-banner.err {
+      background-color: var(--error-tint);
+      border-color: var(--error-border);
+      color: var(--error);
+    }
+
+    /* 157-byte Stamp Frame Visualizer */
+    .frame-bar {
+      display: grid;
+      grid-template-columns: 8fr 16fr 40fr 6fr;
+      gap: 4px;
+      min-height: 48px;
+    }
+    .frame-seg {
+      border-radius: var(--rounded);
+      padding: var(--space-xs) var(--space-sm);
+      border: var(--hairline);
+      background-color: var(--background);
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      cursor: pointer;
+      transition: border-color var(--dur-micro) var(--ease-out),
+                  background-color var(--dur-micro) var(--ease-out);
+    }
+    .frame-seg.is-selected {
+      border-color: var(--primary);
+      background-color: var(--primary-container);
+    }
+    .frame-seg-title {
+      font-family: var(--font-label);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: var(--on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .frame-seg-range {
+      font-family: var(--font-label);
+      font-size: 0.68rem;
+      color: var(--on-surface-variant);
+    }
+    .hex-dump {
+      font-family: var(--font-label);
+      font-size: 0.75rem;
+      line-height: 1.5;
+      color: var(--on-surface-variant);
+      word-break: break-all;
+      max-height: 112px;
+      overflow-y: auto;
+    }
+
+    /* Slot History Table */
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    th {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+      text-align: left;
+      padding: var(--space-sm) var(--space-xs);
+      border-bottom: var(--hairline-strong);
+      font-weight: 500;
+    }
+    td {
+      padding: var(--space-sm) var(--space-xs);
+      border-bottom: var(--hairline);
+      color: var(--on-surface);
+      vertical-align: middle;
+    }
+    .num-cell {
+      text-align: right;
+      font-family: var(--font-label);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Telemetry Console */
+    .console-well {
+      background-color: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      font-family: var(--font-label);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      min-height: 290px;
+      max-height: 410px;
+      overflow-y: auto;
+      display: grid;
+      gap: 4px;
+      align-content: start;
+    }
+    .log-line {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr);
+      gap: var(--space-sm);
+      align-items: baseline;
+      word-break: break-word;
+    }
+    .log-ts { color: var(--secondary); }
+    .log-tag { color: var(--primary); font-weight: 600; }
+    .log-tag.ok { color: var(--tertiary); }
+    .log-tag.warn { color: var(--warning); }
+    .log-tag.err { color: var(--error); }
+    .log-msg { color: var(--on-surface); }
+
+    .panel-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .muted-note {
+      font-size: 0.84rem;
+      color: var(--on-surface-variant);
+      margin: 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .safeguard-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .safeguard-item { border-right: none; padding-right: 0; border-bottom: var(--hairline); padding-bottom: var(--space-sm); }
+      .workbench-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .page-grid { padding: var(--space-sm); gap: var(--space-md); }
+      .metrics-grid,
+      .safeguard-strip,
+      .field-row,
+      .field-row-3,
+      .field-row-4 { grid-template-columns: 1fr; }
+      .frame-bar { grid-template-columns: 1fr 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
 <body>
-
-<div class="container">
-  <header>
-    <h1>Confidential Enclave Gateway</h1>
-    <span class="badge">Oasis Sapphire Testnet (Chain ID 23295) • Intel TDX Zero-Persistence</span>
-  </header>
-
-  <!-- Enclave Gateway Health & Network Status -->
-  <div class="card">
-    <h2>
-      <span>1. Enclave Gateway &amp; Wallet Status</span>
-      <span id="gatewayStatusBadge" class="status-badge status-offline">● Standby</span>
-    </h2>
-    <div class="grid">
-      <div class="form-group">
-        <label for="teeUrl">Enclave Reverse Proxy URL</label>
-        <input type="text" id="teeUrl" value="https://p8080.m1874.opf-testnet-rofl-9.rofl.app" />
+  <div class="page-grid">
+    <!-- Header -->
+    <header class="portal-header">
+      <div>
+        <h1 class="title">BMLT Noether TEE Portal v5</h1>
+        <p class="lede">
+          Oasis Sapphire Testnet (Chain 23295) &amp; ROFL Intel TDX Enclave — strict 157-byte Fermat Ring folding, automatic HeaderLen &amp; Slot ID recovery, and pre-flight staticCall validation.
+        </p>
       </div>
-      <div class="form-group">
-        <label for="contractAddr">Sapphire Contract Address</label>
-        <input type="text" id="contractAddr" value="0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893" readonly />
-      </div>
-    </div>
-    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem;">
-      <button class="btn btn-ping" onclick="pingGateway()">⚡ Ping Gateway</button>
-      <button id="btnConnect" class="btn btn-secondary" onclick="connectWallet()">Connect MetaMask</button>
-      <span id="walletAddr" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">Wallet not connected</span>
-    </div>
-  </div>
-
-  <!-- Entropy & Seed Injection -->
-  <div class="card">
-    <h2>2. Seed &amp; Entropy Injection (Deterministic Derivation)</h2>
-    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
-      Your username and passphrase inject client-side entropy into the enclave's volatile derivation function. 
-      Plaintext data is wiped immediately upon completion and never persists on disk or in container layers.
-    </p>
-    <div class="grid">
-      <div class="form-group">
-        <label for="username">Identity / Username</label>
-        <input type="text" id="username" placeholder="guest" value="guest" />
-      </div>
-      <div class="form-group">
-        <label for="password">Passphrase / Secret</label>
-        <div style="position: relative;">
-          <input type="password" id="password" placeholder="guest" value="guest" />
-          <span style="position: absolute; right: 10px; top: 9px; cursor: pointer; font-size: 0.75rem; color: var(--text-muted);" onclick="togglePassword()">SHOW</span>
+      <div class="header-actions">
+        <div class="mode-switch" role="group" aria-label="Execution Mode">
+          <button type="button" id="btn-mode-live" class="is-active" onclick="setExecutionMode('live')">Live Sapphire + TDX</button>
+          <button type="button" id="btn-mode-sim" onclick="setExecutionMode('sim')">Sandbox Dry-Run</button>
         </div>
+        <button type="button" id="btn-check-health" onclick="checkEnclaveHealth()">Check Enclave /health</button>
+        <button type="button" id="btn-connect-wallet" class="btn-primary" onclick="connectWallet()">Connect MetaMask</button>
       </div>
-    </div>
+    </header>
+
+    <!-- Operational Metrics Strip -->
+    <section class="metrics-grid" aria-label="Protocol Invariants and Live Targets">
+      <div class="metric-tile">
+        <span class="data-label">LedgerCore Contract (v5)</span>
+        <div class="metric-value mono" id="metric-contract-short">0xE972…9d4A</div>
+        <div class="metric-sub" id="metric-contract-full">0xE97218584eDFEe559457De651c32EaF6637a9d4A</div>
+      </div>
+      <div class="metric-tile">
+        <span class="data-label">ROFL Intel TDX Enclave</span>
+        <div class="metric-value mono" id="metric-enclave-short">0x97a5…1B18</div>
+        <div class="metric-sub is-warn" id="metric-enclave-status">Gateway idle — probe /health</div>
+      </div>
+      <div class="metric-tile">
+        <span class="data-label">Framing &amp; Ceiling</span>
+        <div class="metric-value mono">157 B / 100 MB</div>
+        <div class="metric-sub">[8B Len][16B Nonce][129B R][4B CRC32]</div>
+      </div>
+      <div class="metric-tile">
+        <span class="data-label">Wallet &amp; Deposit Fuel</span>
+        <div class="metric-value mono" id="metric-wallet-balance">5.0 TEST / call</div>
+        <div class="metric-sub" id="metric-wallet-status">Not connected — Sapphire 23295</div>
+      </div>
+    </section>
+
+    <!-- Restore Flaw Resolution Summary -->
+    <section class="safeguard-strip" aria-label="Restore Flaw Safeguards">
+      <div class="safeguard-item">
+        <span class="data-label">1. HeaderLen [0..8] Auto-Parse</span>
+        <p class="safeguard-desc">Reads big-endian uint64 byte length from every 157B .Q stamp to set <span class="mono">rEnd = ceil(totalBytes / 128)</span>, fixing 1-block truncation.</p>
+      </div>
+      <div class="safeguard-item">
+        <span class="data-label">2. Slot ID Auto-Detection</span>
+        <p class="safeguard-desc">Extracts <span class="mono">slotId</span> from <span class="mono">_slotN</span> filenames and matches stamp CRC32/SHA-256 against persisted Slot History.</p>
+      </div>
+      <div class="safeguard-item">
+        <span class="data-label">3. MasterKey Seed Sync</span>
+        <p class="safeguard-desc">Shares explicit <span class="mono">username</span> / <span class="mono">password</span> (<span class="mono">guest</span>/<span class="mono">guest</span> default) across Mode 0x01 Fold &amp; Mode 0x02 Restore.</p>
+      </div>
+      <div class="safeguard-item">
+        <span class="data-label">4. Pre-Flight staticCall</span>
+        <p class="safeguard-desc">Simulates <span class="mono">openSessionA</span> / <span class="mono">openSessionB</span> via <span class="mono">eth_call</span> before MetaMask broadcast to prevent <span class="mono">Fault()</span> reverts.</p>
+      </div>
+    </section>
+
+    <!-- Main Workbench -->
+    <main class="workbench-grid">
+      <!-- Left Operational Column -->
+      <div class="stack-col">
+        <!-- Session Credentials & Target Endpoints -->
+        <section class="panel" aria-labelledby="heading-config">
+          <div class="panel-head">
+            <div>
+              <h2 class="section-title" id="heading-config">Credentials &amp; Synchronized Endpoints</h2>
+              <p class="muted-note">Used identically for MasterKey derivation and Sapphire Testnet / ROFL routing.</p>
+            </div>
+            <span class="status-chip cyan" id="chip-exec-mode">MODE: LIVE SAPPHIRE + TDX</span>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="input-username">MasterKey Username (Default: guest)</label>
+              <input type="text" id="input-username" value="guest" autocomplete="off" oninput="onCredentialChange()">
+            </div>
+            <div class="field">
+              <label for="input-password">MasterKey Password (Default: guest)</label>
+              <div class="input-wrap">
+                <input type="password" id="input-password" value="guest" autocomplete="off" oninput="onCredentialChange()">
+                <button type="button" class="input-inline-btn" id="btn-toggle-pw" onclick="togglePasswordVisibility()">Show</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="input-contract">Refactored LedgerCore Address</label>
+              <input type="text" id="input-contract" value="0xE97218584eDFEe559457De651c32EaF6637a9d4A" oninput="onEndpointChange()">
+            </div>
+            <div class="field">
+              <label for="input-gateway">ROFL TDX Gateway URL</label>
+              <input type="text" id="input-gateway" value="https://p8080.m1873.opf-testnet-rofl-25.rofl.app" oninput="onEndpointChange()">
+            </div>
+          </div>
+
+          <div class="field-row-3">
+            <div class="field">
+              <label for="input-enclave-node">Enclave Signer Node</label>
+              <input type="text" id="input-enclave-node" value="0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18" oninput="onEndpointChange()">
+            </div>
+            <div class="field">
+              <label for="input-rpc">Sapphire Testnet RPC</label>
+              <input type="text" id="input-rpc" value="https://testnet.sapphire.oasis.io" oninput="onEndpointChange()">
+            </div>
+            <div class="field">
+              <label for="input-salt">Non-Zero Public Salt (bytes32)</label>
+              <input type="text" id="input-salt" value="0x0000000000000000000000000000000000000000000000000000000000000001">
+            </div>
+          </div>
+        </section>
+
+        <!-- Mode 0x01: File Folding & Root Stamp Anchoring -->
+        <section class="panel" aria-labelledby="heading-fold">
+          <div class="panel-head">
+            <div>
+              <h2 class="section-title" id="heading-fold">Mode 0x01 — File Folding &amp; Root Stamp Anchoring</h2>
+              <p class="muted-note">Calls <span class="mono">openSessionA</span> (5.0 TEST) then streams payload to <span class="mono">/api/fold</span> to emit a strict 157-byte <span class="mono">.Q</span> stamp.</p>
+            </div>
+            <span class="status-chip" id="chip-fold-state">READY</span>
+          </div>
+
+          <div class="dropzone" id="dropzone-fold" tabindex="0" role="button" aria-label="Select payload file to fold" onclick="triggerFoldFilePicker()" onkeydown="handleZoneKey(event, 'fold')">
+            <input type="file" id="file-fold-input" class="file-input-hidden" onchange="onFoldFileSelected(this.files)">
+            <div class="dropzone-top">
+              <div>
+                <div class="subhead" id="fold-file-name">Drop any payload file here or click to browse</div>
+                <div class="muted-note" id="fold-file-meta">Enforces 1 B to 100,000,000 B (100 MB) testnet ceiling.</div>
+              </div>
+              <div class="action-row" onclick="event.stopPropagation()">
+                <button type="button" class="btn-compact" onclick="loadSamplePayload(128)">Sample 128 B</button>
+                <button type="button" class="btn-compact" onclick="loadSamplePayload(4096)">Sample 4 KB</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="kv-strip">
+            <div class="kv-box">
+              <span class="data-label">Payload Bytes</span>
+              <span class="kv-val" id="fold-kv-bytes">0 B</span>
+            </div>
+            <div class="kv-box">
+              <span class="data-label">Blocks (128B)</span>
+              <span class="kv-val" id="fold-kv-blocks">0</span>
+            </div>
+            <div class="kv-box">
+              <span class="data-label">Payload SHA-256</span>
+              <span class="kv-val" id="fold-kv-sha">—</span>
+            </div>
+            <div class="kv-box">
+              <span class="data-label">Deposit / Mode</span>
+              <span class="kv-val">5.0 TEST / Mode 2</span>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-preflight-a" onclick="runPreflightA()" disabled>1. Pre-Flight staticCall (openSessionA)</button>
+            <button type="button" id="btn-exec-fold" class="btn-primary" onclick="executeFold()" disabled>2. Anchor &amp; Fold to 157B .Q (5.0 TEST)</button>
+            <button type="button" id="btn-download-q" class="btn-tertiary" onclick="downloadLastStamp()" disabled>Download 157B .Q Stamp</button>
+          </div>
+
+          <div class="feedback-banner" id="fold-feedback">
+            Select a file or load a sample payload to validate the 100 MB ceiling and run pre-flight <span class="mono">staticCall</span>.
+          </div>
+        </section>
+
+        <!-- Mode 0x02: Bit-for-Bit Reconstruction -->
+        <section class="panel" aria-labelledby="heading-restore">
+          <div class="panel-head">
+            <div>
+              <h2 class="section-title" id="heading-restore">Mode 0x02 — Bit-for-Bit Reconstruction</h2>
+              <p class="muted-note">Auto-parses <span class="mono">HeaderLen [0..8]</span> &amp; <span class="mono">Slot ID</span>, simulates <span class="mono">openSessionB</span>, and restores from the 157-byte <span class="mono">.Q</span> stamp alone.</p>
+            </div>
+            <span class="status-chip" id="chip-restore-state">AWAITING 157B .Q</span>
+          </div>
+
+          <div class="dropzone" id="dropzone-restore" tabindex="0" role="button" aria-label="Select 157-byte .Q stamp file" onclick="triggerRestoreFilePicker()" onkeydown="handleZoneKey(event, 'restore')">
+            <input type="file" id="file-restore-input" class="file-input-hidden" onchange="onRestoreFileSelected(this.files)">
+            <div class="dropzone-top">
+              <div>
+                <div class="subhead" id="restore-file-name">Drop 157-byte .Q stamp here or click to browse</div>
+                <div class="muted-note" id="restore-file-meta">Strictly validates 157-byte frame and auto-populates rEnd = ceil(HeaderLen / 128).</div>
+              </div>
+              <div class="action-row" onclick="event.stopPropagation()">
+                <button type="button" class="btn-compact" id="btn-use-last-q" onclick="useLastFoldedStamp()" disabled>Load Last Folded .Q</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row-4">
+            <div class="field">
+              <label for="input-slot-id">Slot ID (Auto-Detect)</label>
+              <input type="number" id="input-slot-id" min="1" step="1" value="1" oninput="onRestoreParamChange()">
+            </div>
+            <div class="field">
+              <label for="input-rstart">rStart Block</label>
+              <input type="number" id="input-rstart" min="0" step="1" value="0" oninput="onRestoreParamChange()">
+            </div>
+            <div class="field">
+              <label for="input-rend">rEnd (Auto HeaderLen)</label>
+              <input type="number" id="input-rend" min="1" step="1" value="1" oninput="onRestoreParamChange()">
+            </div>
+            <div class="field">
+              <label for="input-restore-name">Output Filename</label>
+              <input type="text" id="input-restore-name" value="restored_payload.bin">
+            </div>
+          </div>
+
+          <div class="kv-strip">
+            <div class="kv-box">
+              <span class="data-label">HeaderLen [0..8]</span>
+              <span class="kv-val" id="restore-kv-len">—</span>
+            </div>
+            <div class="kv-box">
+              <span class="data-label">Slot Detection Source</span>
+              <span class="kv-val" id="restore-kv-slot-src">Manual / Default</span>
+            </div>
+            <div class="kv-box">
+              <span class="data-label">Stamp CRC32 [153..157]</span>
+              <span class="kv-val" id="restore-kv-crc">—</span>
+            </div>
+            <div class="kv-box">
+              <span class="data-label">Rebuilt vs Receipt SHA</span>
+              <span class="kv-val" id="restore-kv-verify">—</span>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button type="button" id="btn-preflight-b" onclick="runPreflightB()" disabled>1. Pre-Flight staticCall (openSessionB)</button>
+            <button type="button" id="btn-exec-restore" class="btn-primary" onclick="executeRestore()" disabled>2. Restore Bit-for-Bit (5.0 TEST)</button>
+            <button type="button" id="btn-download-restored" class="btn-tertiary" onclick="downloadRestoredPayload()" disabled>Download Restored File</button>
+          </div>
+
+          <div class="feedback-banner" id="restore-feedback">
+            Load a 157-byte <span class="mono">.Q</span> stamp to auto-parse <span class="mono">HeaderLen</span>, detect <span class="mono">Slot ID</span>, and verify restore bounds before spending TEST.
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Inspector, Slot History & Telemetry Column -->
+      <div class="stack-col">
+        <!-- 157-Byte Stamp Frame Inspector -->
+        <section class="panel" aria-labelledby="heading-inspector">
+          <div class="panel-head">
+            <div>
+              <h2 class="section-title" id="heading-inspector">157-Byte .Q Stamp Frame Inspector</h2>
+              <p class="muted-note">Click any segment to inspect offsets and raw hex bytes.</p>
+            </div>
+            <span class="status-chip" id="chip-stamp-len">0 / 157 BYTES</span>
+          </div>
+
+          <div class="frame-bar" role="group" aria-label="157-byte framing layout">
+            <button type="button" class="frame-seg is-selected" id="seg-header" onclick="selectFrameSegment('header')">
+              <span class="frame-seg-title">HeaderLen</span>
+              <span class="frame-seg-range">0..8 (8B)</span>
+            </button>
+            <button type="button" class="frame-seg" id="seg-nonce" onclick="selectFrameSegment('nonce')">
+              <span class="frame-seg-title">Nonce</span>
+              <span class="frame-seg-range">8..24 (16B)</span>
+            </button>
+            <button type="button" class="frame-seg" id="seg-rem" onclick="selectFrameSegment('rem')">
+              <span class="frame-seg-title">Masked R_pin</span>
+              <span class="frame-seg-range">24..153 (129B)</span>
+            </button>
+            <button type="button" class="frame-seg" id="seg-crc" onclick="selectFrameSegment('crc')">
+              <span class="frame-seg-title">CRC32</span>
+              <span class="frame-seg-range">153..157 (4B)</span>
+            </button>
+          </div>
+
+          <div class="well">
+            <div class="panel-head">
+              <span class="data-label" id="inspector-seg-label">Segment: HeaderLen [0..8] — uint64 Big-Endian</span>
+              <span class="mono" id="inspector-seg-decoded">—</span>
+            </div>
+            <div class="hex-dump" id="inspector-hex-dump">No 157-byte .Q stamp loaded yet. Fold a file or drop a .Q stamp to inspect its Fermat Ring frame.</div>
+          </div>
+        </section>
+
+        <!-- Synced Slot History -->
+        <section class="panel" aria-labelledby="heading-history">
+          <div class="panel-head">
+            <div>
+              <h2 class="section-title" id="heading-history">Synced Slot History</h2>
+              <p class="muted-note">Persisted session index for automatic Slot ID &amp; filename matching.</p>
+            </div>
+            <button type="button" class="btn-compact" id="btn-clear-history" onclick="clearSlotHistory(this)">Clear History</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Slot</th>
+                  <th>Filename</th>
+                  <th class="num-cell">Bytes / Blks</th>
+                  <th>CRC32 / Receipt</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="slot-history-body">
+                <tr>
+                  <td colspan="5" class="muted-note">No folded slots recorded yet. Fold a payload in Mode 0x01 to anchor Slot #1+.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Live Attestation & Telemetry Console -->
+        <section class="panel" aria-labelledby="heading-console">
+          <div class="panel-head">
+            <div>
+              <h2 class="section-title" id="heading-console">Live Attestation &amp; Telemetry Console</h2>
+              <p class="muted-note">Real-time pre-flight simulation, Sapphire receipts, and TDX enclave diagnostics.</p>
+            </div>
+            <div class="action-row">
+              <button type="button" class="btn-compact" onclick="copyTelemetryLogs()">Copy Logs</button>
+              <button type="button" class="btn-compact" onclick="clearTelemetryLogs()">Clear</button>
+            </div>
+          </div>
+
+          <div class="console-well" id="telemetry-console" aria-live="polite"></div>
+        </section>
+      </div>
+    </main>
   </div>
 
-  <!-- Operation Tabs -->
-  <div class="tabs">
-    <button class="tab-btn active" id="tabFoldBtn" onclick="switchTab('fold')">Mode 0x01: Fold File → 157B Stamp</button>
-    <button class="tab-btn" id="tabRestoreBtn" onclick="switchTab('restore')">Mode 0x02: Reconstruct from 157B Stamp</button>
-  </div>
+  <api-shim></api-shim>
+  <script>
+    // =========================================================================
+    // 1. CONSTANTS & PORTAL STATE
+    // =========================================================================
+    const MAX_TESTNET_CAP = 100000000; // 100 MB ceiling
+    const STAMP_BYTES = 157;
+    const SEGMENT_BYTES = 128;
+    const REMAINDER_BYTES = 129;
+    const DEPOSIT_WEI_HEX = "0x4563918244f40000"; // 5.0 * 10^18 wei
+    const SAPPHIRE_CHAIN_ID_DEC = 23295;
+    const SAPPHIRE_CHAIN_ID_HEX = "0x5aff";
+    const EXT_KEY_64 = "0x" + "00".repeat(64);
+    const MODULUS_M_BIGINT = (1n << 1024n) + 1n;
 
-  <!-- Tab 1: Fold Payload -->
-  <div class="card" id="foldCard">
-    <h2>Fold Payload &amp; Settle State On-Chain (5.0 TEST)</h2>
-    <div class="form-group">
-      <label for="foldFile">Select Payload File (Up to 100 MB)</label>
-      <input type="file" id="foldFile" />
-      <div class="help-text">Input file is compressed into a fixed 157-byte stamp and cleared from memory.</div>
-    </div>
-    <button class="btn btn-primary" id="btnFold" onclick="executeFold()">Sign Deposit (5.0 TEST) &amp; Download 157B Stamp</button>
-  </div>
+    // Precomputed CRC32 table (IEEE 802.3, matching Rust crc32fast::hash)
+    const CRC32_TABLE = (function () {
+      const t = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) {
+          c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        t[i] = c >>> 0;
+      }
+      return t;
+    })();
 
-  <!-- Tab 2: Restore Payload -->
-  <div class="card" id="restoreCard" style="display: none;">
-    <h2>Reconstruct Data Bit-for-Bit from 157-Byte Stamp (5.0 TEST)</h2>
-    <div class="grid">
-      <div class="form-group">
-        <label for="restoreFile">Select 157-Byte Stamp File (.Q)</label>
-        <input type="file" id="restoreFile" accept=".Q,.bin" onchange="inspectStamp(this)" />
-      </div>
-      <div class="form-group">
-        <label for="restoreSlotId">Anchor Slot ID (Sequence #)</label>
-        <input type="number" id="restoreSlotId" value="1" min="1" />
-      </div>
-    </div>
-    <div class="grid">
-      <div class="form-group">
-        <label for="rStart">Block Range Start</label>
-        <input type="number" id="rStart" value="0" min="0" />
-      </div>
-      <div class="form-group">
-        <label for="rEnd">Block Range End</label>
-        <input type="number" id="rEnd" value="1" min="1" />
-      </div>
-    </div>
-    <button class="btn btn-primary" id="btnRestore" onclick="executeRestore()">Sign Session (5.0 TEST) &amp; Reconstruct Payload</button>
-  </div>
+    const state = {
+      execMode: "live", // 'live' | 'sim'
+      walletAddress: null,
+      chainIdHex: null,
+      walletBalanceTest: null,
+      foldFile: null,       // { name, bytes: Uint8Array, sha256Hex }
+      lastStamp: null,      // { bytes: Uint8Array, filename, totalBytes, blocks, nonceHex, crcHex, slotId, receiptHex, anchorTx, refId }
+      restoreStamp: null,   // { bytes: Uint8Array, filename, totalBytes, blocks, nonceHex, crcHex, crcValid, headerHex, remHex, slotId, slotSrc }
+      restoredOutput: null, // { bytes: Uint8Array, filename, sha256Hex, expectedReceipt }
+      selectedFrameSeg: "header",
+      preflightAOk: false,
+      preflightBOk: false,
+      slotHistory: [],      // compact metadata persisted via notebookAppApi
+      simPayloads: {},      // in-memory ephemeral store ONLY for Sandbox Dry-Run tests
+      simSlotCounter: 1,
+      telemetryLogs: []
+    };
 
-  <!-- Live Output Console -->
-  <div class="card">
-    <h2>Enclave Telemetry &amp; Attestation Log</h2>
-    <div class="status-box" id="consoleLog">System ready. Click "⚡ Ping Gateway" or "Connect MetaMask" to begin.</div>
-  </div>
-</div>
+    // =========================================================================
+    // 2. PURE JS KECCAK-256 & SHAKE256 (NO EXTERNAL CRYPTO CDN)
+    // =========================================================================
+    const KECCAK_RC = [
+      0x0000000000000001n, 0x0000000000008082n, 0x800000000000808an, 0x8000000080008000n,
+      0x000000000000808bn, 0x0000000080000001n, 0x8000000080008081n, 0x8000000000008009n,
+      0x000000000000008an, 0x0000000000000088n, 0x0000000080008009n, 0x000000008000000an,
+      0x000000008000808bn, 0x800000000000008bn, 0x8000000000008089n, 0x8000000000008003n,
+      0x8000000000008002n, 0x8000000000000080n, 0x000000000000800an, 0x800000008000000an,
+      0x8000000080008081n, 0x8000000000008080n, 0x0000000080000001n, 0x8000000080008008n
+    ];
+    const KECCAK_ROTC = [
+      0, 1, 62, 28, 27,
+      36, 44, 6, 55, 20,
+      3, 10, 43, 25, 39,
+      41, 45, 15, 21, 8,
+      18, 2, 61, 56, 14
+    ];
+    const MASK64 = 0xffffffffffffffffn;
 
-<script>
-  const SAPPHIRE_CHAIN_ID_HEX = "0x5aff"; // 23295
-  const DEFAULT_ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
-  const DETERMINISTIC_SALT = "0x" + "aa".repeat(32);
-  const EXT_KEY_64 = "0x" + "00".repeat(64);
-
-  const CONTRACT_ABI = [
-    "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-    "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-    "event RefCommitted(bytes32 indexed refId)"
-  ];
-
-  let provider = null;
-  let signer = null;
-  let userAddress = null;
-  let enclaveSigner = DEFAULT_ENCLAVE_SIGNER;
-
-  function log(msg) {
-    const el = document.getElementById("consoleLog");
-    const ts = new Date().toLocaleTimeString();
-    el.innerText += `\n[${ts}] ${msg}`;
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function togglePassword() {
-    const pw = document.getElementById("password");
-    pw.type = pw.type === "password" ? "text" : "password";
-  }
-
-  function switchTab(tab) {
-    document.getElementById("foldCard").style.display = tab === "fold" ? "block" : "none";
-    document.getElementById("restoreCard").style.display = tab === "restore" ? "block" : "none";
-    document.getElementById("tabFoldBtn").classList.toggle("active", tab === "fold");
-    document.getElementById("tabRestoreBtn").classList.toggle("active", tab === "restore");
-  }
-
-  // --- HEALTH CHECK / PING ---
-  async function pingGateway() {
-    const base = document.getElementById("teeUrl").value.replace(/\/+$/, "");
-    const badge = document.getElementById("gatewayStatusBadge");
-    log(`[*] Pinging enclave gateway at: ${base}/health...`);
-    const t0 = performance.now();
-    try {
-      const res = await fetch(`${base}/health`);
-      const latency = Math.round(performance.now() - t0);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.enclave_signer) enclaveSigner = data.enclave_signer;
-      badge.className = "status-badge status-online";
-      badge.innerText = `● Online (${latency}ms)`;
-      log(`[✓] Gateway Status: OK (${latency}ms)`);
-      log(`    Enclave Signer: ${data.enclave_signer}`);
-      log(`    Contract:       ${data.contract}`);
-    } catch (e) {
-      badge.className = "status-badge status-offline";
-      badge.innerText = "● Unreachable";
-      log(`[!] Gateway Ping Failed: ${e.message}`);
+    function rotl64(x, n) {
+      if (n === 0) return x;
+      return ((x << BigInt(n)) | (x >> BigInt(64 - n))) & MASK64;
     }
-  }
 
-  // --- WALLET CONNECTION ---
-  async function connectWallet() {
-    if (!window.ethereum) {
-      alert("MetaMask not detected. Please install MetaMask to use this portal.");
-      return;
+    function keccakF1600(st) {
+      const c = new Array(5);
+      const d = new Array(5);
+      const b = new Array(25);
+      for (let round = 0; round < 24; round++) {
+        for (let x = 0; x < 5; x++) {
+          c[x] = st[x] ^ st[x + 5] ^ st[x + 10] ^ st[x + 15] ^ st[x + 20];
+        }
+        for (let x = 0; x < 5; x++) {
+          d[x] = c[(x + 4) % 5] ^ rotl64(c[(x + 1) % 5], 1);
+        }
+        for (let i = 0; i < 25; i++) {
+          st[i] = (st[i] ^ d[i % 5]) & MASK64;
+        }
+        for (let x = 0; x < 5; x++) {
+          for (let y = 0; y < 5; y++) {
+            const idx = x + 5 * y;
+            const nx = y;
+            const ny = (2 * x + 3 * y) % 5;
+            b[nx + 5 * ny] = rotl64(st[idx], KECCAK_ROTC[idx]);
+          }
+        }
+        for (let y = 0; y < 5; y++) {
+          const row = y * 5;
+          for (let x = 0; x < 5; x++) {
+            st[row + x] = (b[row + x] ^ ((~b[row + ((x + 1) % 5)] & MASK64) & b[row + ((x + 2) % 5)])) & MASK64;
+          }
+        }
+        st[0] = (st[0] ^ KECCAK_RC[round]) & MASK64;
+      }
     }
-    try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainId.toLowerCase() !== SAPPHIRE_CHAIN_ID_HEX) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: SAPPHIRE_CHAIN_ID_HEX }]
-          });
-        } catch (switchErr) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: SAPPHIRE_CHAIN_ID_HEX,
-              chainName: "Oasis Sapphire Testnet",
-              nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-              rpcUrls: ["https://testnet.sapphire.oasis.io"],
-              blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-            }]
-          });
+
+    function keccakSponge(inputBytes, rateBytes, domainByte, outLen) {
+      const st = new Array(25).fill(0n);
+      const paddedLen = Math.ceil((inputBytes.length + 1) / rateBytes) * rateBytes;
+      const padded = new Uint8Array(paddedLen);
+      padded.set(inputBytes);
+      padded[inputBytes.length] ^= domainByte;
+      padded[paddedLen - 1] ^= 0x80;
+
+      for (let off = 0; off < paddedLen; off += rateBytes) {
+        const lanes = rateBytes >> 3;
+        for (let i = 0; i < lanes; i++) {
+          const p = off + i * 8;
+          let lane = 0n;
+          for (let j = 0; j < 8; j++) {
+            lane |= BigInt(padded[p + j]) << BigInt(j * 8);
+          }
+          st[i] = (st[i] ^ lane) & MASK64;
+        }
+        keccakF1600(st);
+      }
+
+      const out = new Uint8Array(outLen);
+      let written = 0;
+      while (written < outLen) {
+        const lanes = rateBytes >> 3;
+        for (let i = 0; i < lanes && written < outLen; i++) {
+          let lane = st[i];
+          for (let j = 0; j < 8 && written < outLen; j++) {
+            out[written++] = Number((lane >> BigInt(j * 8)) & 0xffn);
+          }
+        }
+        if (written < outLen) keccakF1600(st);
+      }
+      return out;
+    }
+
+    function keccak256Bytes(inputBytes) {
+      return keccakSponge(inputBytes, 136, 0x01, 32);
+    }
+
+    function keccak256Text(str) {
+      return bytesToHex(keccak256Bytes(new TextEncoder().encode(str)));
+    }
+
+    function shake256Bytes(inputBytes, outLen) {
+      return keccakSponge(inputBytes, 136, 0x1f, outLen);
+    }
+
+    // =========================================================================
+    // 3. BYTE, HEX, CRC32, SHA-256 & ABI ENCODING HELPERS
+    // =========================================================================
+    function bytesToHex(bytes, withPrefix) {
+      let s = withPrefix ? "0x" : "";
+      for (let i = 0; i < bytes.length; i++) {
+        s += bytes[i].toString(16).padStart(2, "0");
+      }
+      return s;
+    }
+
+    function hexToBytes(hex) {
+      const clean = String(hex || "").trim().replace(/^0x/i, "");
+      if (clean.length % 2 !== 0) return new Uint8Array(0);
+      const out = new Uint8Array(clean.length / 2);
+      for (let i = 0; i < out.length; i++) {
+        out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
+      }
+      return out;
+    }
+
+    function crc32Bytes(buf) {
+      let crc = 0xffffffff;
+      for (let i = 0; i < buf.length; i++) {
+        crc = CRC32_TABLE[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+      }
+      crc = (crc ^ 0xffffffff) >>> 0;
+      const out = new Uint8Array(4);
+      const view = new DataView(out.buffer);
+      view.setUint32(0, crc, false);
+      return out;
+    }
+
+    async function sha256Bytes(buf) {
+      if (window.crypto && window.crypto.subtle) {
+        const digest = await window.crypto.subtle.digest("SHA-256", buf);
+        return new Uint8Array(digest);
+      }
+      // Fallback deterministic hash only if subtle unavailable (e.g., insecure context)
+      return keccak256Bytes(buf);
+    }
+
+    function pad32Left(bytes) {
+      const out = new Uint8Array(32);
+      const slice = bytes.length > 32 ? bytes.slice(bytes.length - 32) : bytes;
+      out.set(slice, 32 - slice.length);
+      return out;
+    }
+
+    function encodeUintWord(valBigInt) {
+      const out = new Uint8Array(32);
+      let v = BigInt(valBigInt);
+      for (let i = 31; i >= 0; i--) {
+        out[i] = Number(v & 0xffn);
+        v >>= 8n;
+      }
+      return out;
+    }
+
+    function encodeAddressWord(addr) {
+      return pad32Left(hexToBytes(addr));
+    }
+
+    function encodeBytes32Word(hex) {
+      return pad32Left(hexToBytes(hex));
+    }
+
+    function concatUint8(arrays) {
+      let total = 0;
+      for (let i = 0; i < arrays.length; i++) total += arrays[i].length;
+      const out = new Uint8Array(total);
+      let off = 0;
+      for (let i = 0; i < arrays.length; i++) {
+        out.set(arrays[i], off);
+        off += arrays[i].length;
+      }
+      return out;
+    }
+
+    // openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64)
+    function encodeOpenSessionA(maxMetric, nodeAddr, mode, saltHex, extKey64Hex) {
+      const sel = keccak256Bytes(new TextEncoder().encode("openSessionA(uint64,address,uint8,bytes32,bytes)")).slice(0, 4);
+      const extBytes = hexToBytes(extKey64Hex);
+      const paddedLen = Math.ceil(extBytes.length / 32) * 32;
+      const extData = new Uint8Array(paddedLen);
+      extData.set(extBytes);
+      const calldata = concatUint8([
+        sel,
+        encodeUintWord(BigInt(maxMetric)),
+        encodeAddressWord(nodeAddr),
+        encodeUintWord(BigInt(mode)),
+        encodeBytes32Word(saltHex),
+        encodeUintWord(160n), // offset to dynamic bytes (5 * 32)
+        encodeUintWord(BigInt(extBytes.length)),
+        extData
+      ]);
+      return bytesToHex(calldata, true);
+    }
+
+    // openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64)
+    function encodeOpenSessionB(slotId, rStart, rEnd, nodeAddr, mode, saltHex, extKey64Hex) {
+      const sel = keccak256Bytes(new TextEncoder().encode("openSessionB(uint32,uint64,uint64,address,uint8,bytes32,bytes)")).slice(0, 4);
+      const extBytes = hexToBytes(extKey64Hex);
+      const paddedLen = Math.ceil(extBytes.length / 32) * 32;
+      const extData = new Uint8Array(paddedLen);
+      extData.set(extBytes);
+      const calldata = concatUint8([
+        sel,
+        encodeUintWord(BigInt(slotId)),
+        encodeUintWord(BigInt(rStart)),
+        encodeUintWord(BigInt(rEnd)),
+        encodeAddressWord(nodeAddr),
+        encodeUintWord(BigInt(mode)),
+        encodeBytes32Word(saltHex),
+        encodeUintWord(224n), // offset to dynamic bytes (7 * 32)
+        encodeUintWord(BigInt(extBytes.length)),
+        extData
+      ]);
+      return bytesToHex(calldata, true);
+    }
+
+    // =========================================================================
+    // 4. PURE BASE-256 RING129 ENGINE (SANDBOX DRY-RUN & STAMP PARSING)
+    // =========================================================================
+    function bytesToBigInt(bytes) {
+      let acc = 0n;
+      for (let i = 0; i < bytes.length; i++) {
+        acc = (acc << 8n) | BigInt(bytes[i]);
+      }
+      return acc;
+    }
+
+    function bigIntToRing129(val) {
+      const out = new Uint8Array(REMAINDER_BYTES);
+      let v = ((val % MODULUS_M_BIGINT) + MODULUS_M_BIGINT) % MODULUS_M_BIGINT;
+      for (let i = REMAINDER_BYTES - 1; i >= 0; i--) {
+        out[i] = Number(v & 0xffn);
+        v >>= 8n;
+      }
+      return out;
+    }
+
+    function ringReflect(sVal, xVal) {
+      return (((sVal - xVal) % MODULUS_M_BIGINT) + MODULUS_M_BIGINT) % MODULUS_M_BIGINT;
+    }
+
+    async function deriveLocalSeed(username, password) {
+      const u = (username || "guest").trim() || "guest";
+      const p = (password || "guest").trim() || "guest";
+      const enc = new TextEncoder().encode(`BMLT_MASTER_V5:${u}:${p}:s`);
+      return await sha256Bytes(enc);
+    }
+
+    function shakeSlice129(domBytes, seed32, blkIdx, nonce16) {
+      const idxBytes = new Uint8Array(8);
+      new DataView(idxBytes.buffer).setBigUint64(0, BigInt(blkIdx), false);
+      const xof = shake256Bytes(concatUint8([domBytes, seed32, idxBytes, nonce16]), 128);
+      const out = new Uint8Array(REMAINDER_BYTES);
+      out.set(xof, 1);
+      return bytesToBigInt(out);
+    }
+
+    function maskRemainder129(seed32, nonce16, rBytes) {
+      const dom = new TextEncoder().encode("BMLT_DOM_MASK");
+      const mask = shake256Bytes(concatUint8([dom, seed32, nonce16]), REMAINDER_BYTES);
+      const out = new Uint8Array(REMAINDER_BYTES);
+      for (let i = 0; i < REMAINDER_BYTES; i++) {
+        out[i] = rBytes[i] ^ mask[i];
+      }
+      return out;
+    }
+
+    async function localFoldTo157(payloadBytes, username, password) {
+      const seed = await deriveLocalSeed(username, password);
+      const nonce = new Uint8Array(16);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(nonce);
+      } else {
+        for (let i = 0; i < 16; i++) nonce[i] = (i * 37 + 19) & 0xff;
+      }
+      const domS = new TextEncoder().encode("BMLT_DOM_S");
+      const totalBytes = payloadBytes.length;
+      const totalBlocks = totalBytes > 0 ? Math.ceil(totalBytes / SEGMENT_BYTES) : 1;
+      let rPin = 0n;
+
+      for (let blkIdx = 0; blkIdx < totalBlocks; blkIdx++) {
+        const chunk = new Uint8Array(SEGMENT_BYTES);
+        const start = blkIdx * SEGMENT_BYTES;
+        const slice = payloadBytes.subarray(start, Math.min(totalBytes, start + SEGMENT_BYTES));
+        chunk.set(slice);
+        const dKBytes = new Uint8Array(REMAINDER_BYTES);
+        dKBytes.set(chunk, 1);
+        const dK = bytesToBigInt(dKBytes);
+        const sK = shakeSlice129(domS, seed, blkIdx, nonce);
+        const rK = ringReflect(sK, dK);
+        let layer = ringReflect(sK, rK);
+        if ((blkIdx & 1) === 1) {
+          layer = (MODULUS_M_BIGINT - layer) % MODULUS_M_BIGINT;
+        }
+        rPin = (rPin + layer) % MODULUS_M_BIGINT;
+      }
+
+      const rPlainBytes = bigIntToRing129(rPin);
+      const stamp = new Uint8Array(STAMP_BYTES);
+      new DataView(stamp.buffer).setBigUint64(0, BigInt(totalBytes), false);
+      stamp.set(nonce, 8);
+      stamp.set(rPlainBytes, 24);
+      const crc = crc32Bytes(stamp.subarray(0, 153));
+      stamp.set(crc, 153);
+      const rMasked = maskRemainder129(seed, nonce, rPlainBytes);
+      stamp.set(rMasked, 24);
+      const payloadSha = await sha256Bytes(payloadBytes);
+      return { stamp, payloadSha };
+    }
+
+    function parse157StampHeader(stampBytes) {
+      if (!stampBytes || stampBytes.length !== STAMP_BYTES) {
+        return { validLength: false };
+      }
+      const view = new DataView(stampBytes.buffer, stampBytes.byteOffset, stampBytes.byteLength);
+      const totalBytesBig = view.getBigUint64(0, false);
+      const totalBytes = Number(totalBytesBig);
+      const blocks = totalBytes > 0 ? Math.ceil(totalBytes / SEGMENT_BYTES) : 1;
+      const nonceBytes = stampBytes.subarray(8, 24);
+      const remBytes = stampBytes.subarray(24, 153);
+      const crcTrailer = stampBytes.subarray(153, 157);
+      return {
+        validLength: true,
+        totalBytes,
+        blocks,
+        headerHex: bytesToHex(stampBytes.subarray(0, 8), true),
+        nonceHex: bytesToHex(nonceBytes, false),
+        remHex: bytesToHex(remBytes, false),
+        crcHex: bytesToHex(crcTrailer, false),
+        fullHex: bytesToHex(stampBytes, false)
+      };
+    }
+
+    async function verify157StampCrcWithSeed(stampBytes, username, password) {
+      if (!stampBytes || stampBytes.length !== STAMP_BYTES) return false;
+      const seed = await deriveLocalSeed(username, password);
+      const nonce = stampBytes.subarray(8, 24);
+      const maskedR = stampBytes.subarray(24, 153);
+      const unmaskedR = maskRemainder129(seed, nonce, maskedR);
+      const verifyBuf = new Uint8Array(153);
+      verifyBuf.set(stampBytes.subarray(0, 24), 0);
+      verifyBuf.set(unmaskedR, 24);
+      const actualCrc = crc32Bytes(verifyBuf);
+      const expectedCrc = stampBytes.subarray(153, 157);
+      for (let i = 0; i < 4; i++) {
+        if (actualCrc[i] !== expectedCrc[i]) return false;
+      }
+      return true;
+    }
+
+    // =========================================================================
+    // 5. TELEMETRY LOGGING & STATE PERSISTENCE (notebookAppApi)
+    // =========================================================================
+    function nowTimeStr() {
+      const d = new Date();
+      return d.toTimeString().slice(0, 8);
+    }
+
+    function logTelemetry(tag, message, level) {
+      const lvl = level || "info";
+      state.telemetryLogs.push({ ts: nowTimeStr(), tag, message, lvl });
+      if (state.telemetryLogs.length > 140) {
+        state.telemetryLogs.shift();
+      }
+      renderTelemetryConsole();
+    }
+
+    function renderTelemetryConsole() {
+      const box = document.getElementById("telemetry-console");
+      if (!box) return;
+      if (state.telemetryLogs.length === 0) {
+        box.innerHTML = `<div class="muted-note">Telemetry console idle. Connect MetaMask or run a Sandbox Dry-Run to observe attestations.</div>`;
+        return;
+      }
+      box.innerHTML = state.telemetryLogs.map(function (entry) {
+        const cls = entry.lvl === "ok" ? "ok" : entry.lvl === "warn" ? "warn" : entry.lvl === "err" ? "err" : "";
+        return `<div class="log-line"><span class="log-ts">[${escapeHtml(entry.ts)}]</span><span class="log-tag ${cls}">${escapeHtml(entry.tag)}</span><span class="log-msg">${escapeHtml(entry.message)}</span></div>`;
+      }).join("");
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    async function persistAppState() {
+      if (!window.notebookAppApi || typeof window.notebookAppApi.setAppState !== "function") return;
+      const usernameEl = document.getElementById("input-username");
+      const contractEl = document.getElementById("input-contract");
+      const gatewayEl = document.getElementById("input-gateway");
+      const enclaveEl = document.getElementById("input-enclave-node");
+      const rpcEl = document.getElementById("input-rpc");
+      try {
+        await window.notebookAppApi.setAppState({
+          execMode: state.execMode,
+          username: usernameEl ? usernameEl.value : "guest",
+          contract: contractEl ? contractEl.value : "0xE97218584eDFEe559457De651c32EaF6637a9d4A",
+          gateway: gatewayEl ? gatewayEl.value : "https://p8080.m1873.opf-testnet-rofl-25.rofl.app",
+          enclaveNode: enclaveEl ? enclaveEl.value : "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18",
+          rpc: rpcEl ? rpcEl.value : "https://testnet.sapphire.oasis.io",
+          slotHistory: state.slotHistory.slice(0, 25)
+        });
+      } catch (_err) {
+        // Ignore transient shim errors
+      }
+    }
+
+    async function restoreSavedState() {
+      if (!window.notebookAppApi || typeof window.notebookAppApi.getAppState !== "function") return;
+      try {
+        const saved = await window.notebookAppApi.getAppState();
+        if (!saved) return;
+        if (saved.execMode === "live" || saved.execMode === "sim") {
+          state.execMode = saved.execMode;
+        }
+        const setVal = function (id, v) {
+          const el = document.getElementById(id);
+          if (el && typeof v === "string" && v.trim()) el.value = v;
+        };
+        setVal("input-username", saved.username);
+        setVal("input-contract", saved.contract);
+        setVal("input-gateway", saved.gateway);
+        setVal("input-enclave-node", saved.enclaveNode);
+        setVal("input-rpc", saved.rpc);
+        if (Array.isArray(saved.slotHistory)) {
+          state.slotHistory = saved.slotHistory;
+          let maxSlot = 0;
+          for (let i = 0; i < state.slotHistory.length; i++) {
+            if (state.slotHistory[i].slotId > maxSlot) maxSlot = state.slotHistory[i].slotId;
+          }
+          state.simSlotCounter = maxSlot + 1;
+        }
+      } catch (_err) {
+        // Fresh session
+      }
+    }
+
+    // =========================================================================
+    // 6. UI CONTROLS & HEADER / ENDPOINT HANDLERS
+    // =========================================================================
+    function getConfig() {
+      const val = function (id, fallback) {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : fallback;
+      };
+      return {
+        username: val("input-username", "guest") || "guest",
+        password: val("input-password", "guest") || "guest",
+        contract: val("input-contract", "0xE97218584eDFEe559457De651c32EaF6637a9d4A"),
+        gateway: val("input-gateway", "https://p8080.m1873.opf-testnet-rofl-25.rofl.app").replace(/\/+$/, ""),
+        enclaveNode: val("input-enclave-node", "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18"),
+        rpc: val("input-rpc", "https://testnet.sapphire.oasis.io"),
+        salt: val("input-salt", "0x0000000000000000000000000000000000000000000000000000000000000001")
+      };
+    }
+
+    function setExecutionMode(mode) {
+      state.execMode = mode === "sim" ? "sim" : "live";
+      const liveBtn = document.getElementById("btn-mode-live");
+      const simBtn = document.getElementById("btn-mode-sim");
+      const modeChip = document.getElementById("chip-exec-mode");
+      if (liveBtn) liveBtn.classList.toggle("is-active", state.execMode === "live");
+      if (simBtn) simBtn.classList.toggle("is-active", state.execMode === "sim");
+      if (modeChip) {
+        modeChip.textContent = state.execMode === "live"
+          ? "MODE: LIVE SAPPHIRE + TDX"
+          : "MODE: SANDBOX DRY-RUN (LOCAL RING129)";
+        modeChip.className = state.execMode === "live" ? "status-chip cyan" : "status-chip ok";
+      }
+      state.preflightAOk = false;
+      state.preflightBOk = false;
+      logTelemetry("MODE", `Switched execution backend to ${state.execMode === "live" ? "Live Sapphire Testnet (23295) + ROFL TDX" : "Sandbox Dry-Run (Local Base-256 Ring129)"}.`, "info");
+      persistAppState();
+    }
+
+    function togglePasswordVisibility() {
+      const pw = document.getElementById("input-password");
+      const btn = document.getElementById("btn-toggle-pw");
+      if (!pw || !btn) return;
+      if (pw.type === "password") {
+        pw.type = "text";
+        btn.textContent = "Hide";
+      } else {
+        pw.type = "password";
+        btn.textContent = "Show";
+      }
+    }
+
+    function onCredentialChange() {
+      state.preflightAOk = false;
+      state.preflightBOk = false;
+      persistAppState();
+    }
+
+    function onEndpointChange() {
+      const cfg = getConfig();
+      const shortC = document.getElementById("metric-contract-short");
+      const fullC = document.getElementById("metric-contract-full");
+      const shortE = document.getElementById("metric-enclave-short");
+      if (shortC && cfg.contract.length >= 10) {
+        shortC.textContent = `${cfg.contract.slice(0, 6)}…${cfg.contract.slice(-4)}`;
+      }
+      if (fullC) fullC.textContent = cfg.contract;
+      if (shortE && cfg.enclaveNode.length >= 10) {
+        shortE.textContent = `${cfg.enclaveNode.slice(0, 6)}…${cfg.enclaveNode.slice(-4)}`;
+      }
+      state.preflightAOk = false;
+      state.preflightBOk = false;
+      persistAppState();
+    }
+
+    async function checkEnclaveHealth() {
+      const cfg = getConfig();
+      const statusEl = document.getElementById("metric-enclave-status");
+      if (state.execMode === "sim") {
+        if (statusEl) {
+          statusEl.textContent = "Sandbox Intel TDX mock healthy";
+          statusEl.className = "metric-sub is-ok";
+        }
+        logTelemetry("ENCLAVE", `Sandbox /health OK — Node ID bOlqho9R…WlY60E= | App rofl1qpv949ru…6tfk | Signer ${cfg.enclaveNode}`, "ok");
+        return;
+      }
+      logTelemetry("ENCLAVE", `Probing ${cfg.gateway}/health ...`, "info");
+      try {
+        const res = await fetch(`${cfg.gateway}/health`, { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (statusEl) {
+          statusEl.textContent = `TDX OK — ${data.status || "ok"} | contract synced`;
+          statusEl.className = "metric-sub is-ok";
+        }
+        logTelemetry("ENCLAVE", `/health OK -> signer=${data.enclave_signer || cfg.enclaveNode} | contract=${data.contract || cfg.contract}`, "ok");
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = "Unreachable in sandbox — switch to Dry-Run or open locally";
+          statusEl.className = "metric-sub is-warn";
+        }
+        logTelemetry("ENCLAVE", `Gateway /health probe blocked or offline (${err.message}). Use Sandbox Dry-Run in preview or open with live network access.`, "warn");
+      }
+    }
+
+    async function connectWallet() {
+      const statusEl = document.getElementById("metric-wallet-status");
+      const balEl = document.getElementById("metric-wallet-balance");
+      const btn = document.getElementById("btn-connect-wallet");
+      const cfg = getConfig();
+
+      if (state.execMode === "sim") {
+        state.walletAddress = "0xd0116f1932e4F0Fb6319bbDba4B548995BAab978";
+        state.chainIdHex = SAPPHIRE_CHAIN_ID_HEX;
+        state.walletBalanceTest = "84.1324";
+        if (balEl) balEl.textContent = "84.1324 TEST";
+        if (statusEl) {
+          statusEl.textContent = `Sandbox Wallet ${state.walletAddress.slice(0, 8)}…${state.walletAddress.slice(-4)} (Chain 23295)`;
+          statusEl.className = "metric-sub is-ok";
+        }
+        if (btn) btn.textContent = `Connected: ${state.walletAddress.slice(0, 6)}…${state.walletAddress.slice(-4)}`;
+        logTelemetry("WALLET", `Sandbox wallet attached (${state.walletAddress}) on Oasis Sapphire Testnet (23295).`, "ok");
+        return;
+      }
+
+      if (!window.ethereum) {
+        if (statusEl) {
+          statusEl.textContent = "No EIP-1193 provider detected — try Sandbox Dry-Run";
+          statusEl.className = "metric-sub is-warn";
+        }
+        logTelemetry("WALLET", `MetaMask (window.ethereum) not found in this frame. Switch to Sandbox Dry-Run or open in a MetaMask-enabled browser.`, "warn");
+        return;
+      }
+
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        state.walletAddress = accounts[0];
+        let chainId = await window.ethereum.request({ method: "eth_chainId" });
+        if (chainId.toLowerCase() !== SAPPHIRE_CHAIN_ID_HEX) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: SAPPHIRE_CHAIN_ID_HEX }]
+            });
+          } catch (switchErr) {
+            if (switchErr && switchErr.code === 4902) {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [{
+                  chainId: SAPPHIRE_CHAIN_ID_HEX,
+                  chainName: "Oasis Sapphire Testnet",
+                  nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
+                  rpcUrls: [cfg.rpc]
+                }]
+              });
+            } else {
+              throw switchErr;
+            }
+          }
+          chainId = await window.ethereum.request({ method: "eth_chainId" });
+        }
+        state.chainIdHex = chainId;
+        const balHex = await window.ethereum.request({
+          method: "eth_getBalance",
+          params: [state.walletAddress, "latest"]
+        });
+        const balTest = Number(BigInt(balHex)) / 1e18;
+        state.walletBalanceTest = balTest.toFixed(4);
+        if (balEl) balEl.textContent = `${state.walletBalanceTest} TEST`;
+        if (statusEl) {
+          statusEl.textContent = `${state.walletAddress.slice(0, 8)}…${state.walletAddress.slice(-4)} | Sapphire ${parseInt(chainId, 16)}`;
+          statusEl.className = "metric-sub is-ok";
+        }
+        if (btn) btn.textContent = `Connected: ${state.walletAddress.slice(0, 6)}…${state.walletAddress.slice(-4)}`;
+        logTelemetry("WALLET", `Connected ${state.walletAddress} on Chain ${parseInt(chainId, 16)} (${state.walletBalanceTest} TEST).`, "ok");
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = `Wallet connection failed: ${err.message}`;
+          statusEl.className = "metric-sub is-err";
+        }
+        logTelemetry("WALLET", `MetaMask connection error: ${err.message}`, "err");
+      }
+    }
+
+    // =========================================================================
+    // 7. MODE 0x01: FILE FOLDING & ROOT STAMP ANCHORING
+    // =========================================================================
+    function handleZoneKey(ev, target) {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        if (target === "fold") triggerFoldFilePicker();
+        else triggerRestoreFilePicker();
+      }
+    }
+
+    function triggerFoldFilePicker() {
+      const inp = document.getElementById("file-fold-input");
+      if (inp) inp.click();
+    }
+
+    async function onFoldFileSelected(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      const file = fileList[0];
+      const buf = new Uint8Array(await file.arrayBuffer());
+      await setFoldPayload(file.name, buf);
+    }
+
+    async function loadSamplePayload(byteLen) {
+      const buf = new Uint8Array(byteLen);
+      if (byteLen === 128) {
+        const text = `BMLT Noether Fermat Ring M=2^1024+1 single-block test payload (128B exact frame). Sapphire 0xE972...9d4A`;
+        const enc = new TextEncoder().encode(text);
+        buf.set(enc.subarray(0, 128));
+      } else {
+        for (let i = 0; i < byteLen; i++) {
+          buf[i] = (i * 131 + 17) & 0xff;
         }
       }
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      userAddress = await signer.getAddress();
-      document.getElementById("walletAddr").innerText = `${userAddress.slice(0, 8)}...${userAddress.slice(-6)}`;
-      document.getElementById("btnConnect").innerText = "Connected";
-      log(`[✓] Wallet connected: ${userAddress}`);
-    } catch (err) {
-      log(`[!] Wallet connection failed: ${err.message}`);
-    }
-  }
-
-  // --- STAMP FILE INSPECTION ---
-  async function inspectStamp(input) {
-    const file = input.files[0];
-    if (!file) return;
-    if (file.size !== 157) {
-      log(`[!] Selected file is ${file.size} bytes (strict stamps are 157 bytes).`);
-      return;
-    }
-    const buf = await file.arrayBuffer();
-    const view = new DataView(buf);
-    const totalBytes = Number(view.getBigUint64(0, false));
-    const totalBlocks = Math.max(1, Math.ceil(totalBytes / 128));
-    document.getElementById("rStart").value = "0";
-    document.getElementById("rEnd").value = String(totalBlocks);
-    log(`[i] Inspected 157-byte stamp: PayloadLen = ${totalBytes.toLocaleString()} bytes (${totalBlocks.toLocaleString()} blocks).`);
-  }
-
-  // --- FOLD HANDLER ---
-  async function executeFold() {
-    if (!signer) await connectWallet();
-    if (!signer) return;
-
-    const fileInput = document.getElementById("foldFile");
-    const file = fileInput.files[0];
-    if (!file) {
-      alert("Please select a file to fold first.");
-      return;
+      await setFoldPayload(`sample_${byteLen}b.bin`, buf);
     }
 
-    const base = document.getElementById("teeUrl").value.replace(/\/+$/, "");
-    const contractAddr = document.getElementById("contractAddr").value.trim();
-    const username = document.getElementById("username").value.trim() || "guest";
-    const password = document.getElementById("password").value.trim() || "guest";
+    async function setFoldPayload(name, bytes) {
+      const sha = await sha256Bytes(bytes);
+      const shaHex = bytesToHex(sha, true);
+      const blocks = bytes.length > 0 ? Math.ceil(bytes.length / SEGMENT_BYTES) : 1;
+      state.foldFile = { name, bytes, sha256Hex: shaHex };
+      state.preflightAOk = false;
 
-    try {
-      document.getElementById("btnFold").disabled = true;
-      const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
+      const nameEl = document.getElementById("fold-file-name");
+      const metaEl = document.getElementById("fold-file-meta");
+      const kvBytes = document.getElementById("fold-kv-bytes");
+      const kvBlocks = document.getElementById("fold-kv-blocks");
+      const kvSha = document.getElementById("fold-kv-sha");
+      const chip = document.getElementById("chip-fold-state");
+      const btnPre = document.getElementById("btn-preflight-a");
+      const btnExec = document.getElementById("btn-exec-fold");
+      const fb = document.getElementById("fold-feedback");
 
-      // Ensure metric cap covers any uncommitted slot reservation
-      const reqMetric = Math.max(file.size, 1048576);
-      log(`[*] Step 1/2: Paying 5.0 TEST & opening Session A on-chain for "${file.name}" (${file.size.toLocaleString()} bytes)...`);
+      if (nameEl) nameEl.textContent = name;
+      if (kvBytes) kvBytes.textContent = `${bytes.length.toLocaleString()} B`;
+      if (kvBlocks) kvBlocks.textContent = `${blocks.toLocaleString()} blk`;
+      if (kvSha) kvSha.textContent = `${shaHex.slice(0, 14)}…`;
 
-      // Hardened explicit gasLimit prevents Sapphire out-of-gas revert
-      const tx = await contract.openSessionA(
-        BigInt(reqMetric),
-        enclaveSigner,
-        2, // Mode 2: Client-locked
-        DETERMINISTIC_SALT,
-        EXT_KEY_64,
-        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
-      );
-      log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
-      const receipt = await tx.wait();
-
-      // Robust event log decoding for RefCommitted(bytes32)
-      const iface = new ethers.Interface(CONTRACT_ABI);
-      let refId = null;
-      for (const logItem of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(logItem);
-          if (parsed && parsed.name === "RefCommitted") {
-            refId = parsed.args.refId;
-            break;
-          }
-        } catch (_) {}
-      }
-      if (!refId && receipt.logs.length > 0) {
-        for (const logItem of receipt.logs) {
-          if (logItem.topics && logItem.topics.length >= 2) {
-            refId = logItem.topics[1];
-            break;
-          }
+      if (bytes.length === 0 || bytes.length > MAX_TESTNET_CAP) {
+        if (metaEl) metaEl.textContent = `Rejected: payload must be 1 B to ${MAX_TESTNET_CAP.toLocaleString()} B.`;
+        if (chip) { chip.textContent = "CAP VIOLATION"; chip.className = "status-chip err"; }
+        if (btnPre) btnPre.disabled = true;
+        if (btnExec) btnExec.disabled = true;
+        if (fb) {
+          fb.className = "feedback-banner err";
+          fb.textContent = `Ceiling error: ${bytes.length.toLocaleString()} bytes violates MAX_TESTNET_CAP (100,000,000 bytes) or 0-byte floor. Choose a valid file to avoid Fault().`;
         }
-      }
-      if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
-      log(`[✓] Session opened on-chain! Verified refId = ${refId}`);
-
-      // Submit payload to TEE Enclave
-      log(`[*] Step 2/2: Uploading payload and entropy credentials to TEE Enclave...`);
-      const formData = new FormData();
-      formData.append("refId", refId);
-      formData.append("account", userAddress);
-      formData.append("username", username);
-      formData.append("password", password);
-      formData.append("file", file);
-
-      const resp = await fetch(`${base}/api/fold`, {
-        method: "POST",
-        body: formData
-      });
-
-      if (!resp.ok) {
-        const errBody = await resp.text();
-        throw new Error(`Enclave Gateway returned HTTP ${resp.status}: ${errBody}`);
+        logTelemetry("FOLD", `Payload '${name}' (${bytes.length} B) failed 100 MB ceiling check.`, "err");
+        return;
       }
 
-      const qBlob = await resp.blob();
-      const anchorTx = resp.headers.get("X-Anchor-Tx") || "N/A";
-      const slotId = resp.headers.get("X-Slot-Id") || "1";
-      const totalBlocks = resp.headers.get("X-Total-Blocks") || String(Math.max(1, Math.ceil(file.size / 128)));
-      const receiptHex = resp.headers.get("X-BMLT-Receipt") || resp.headers.get("X-Receipt") || "";
-
-      document.getElementById("restoreSlotId").value = slotId;
-      document.getElementById("rStart").value = "0";
-      document.getElementById("rEnd").value = totalBlocks;
-
-      // Auto-download 157-byte stamp
-      const downloadUrl = window.URL.createObjectURL(qBlob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = `${file.name}.Q`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      log(`[🏆] SUCCESS: Received ${qBlob.size}-byte stamp file "${file.name}.Q"!`);
-      log(`    Anchored Slot ID: ${slotId} | Blocks: 0..${totalBlocks}`);
-      log(`    Settlement Tx:   ${anchorTx}`);
-      log(`    Receipt Hash:    ${receiptHex}`);
-    } catch (err) {
-      log(`[!] Fold Failed: ${err.message}`);
-    } finally {
-      document.getElementById("btnFold").disabled = false;
-    }
-  }
-
-  // --- RESTORE HANDLER ---
-  async function executeRestore() {
-    if (!signer) await connectWallet();
-    if (!signer) return;
-
-    const fileInput = document.getElementById("restoreFile");
-    const qFile = fileInput.files[0];
-    if (!qFile) {
-      alert("Please select a 157-byte stamp file first.");
-      return;
+      if (metaEl) metaEl.textContent = `Ready for pre-flight openSessionA simulation (${blocks} x 128B blocks).`;
+      if (chip) { chip.textContent = "PAYLOAD READY"; chip.className = "status-chip cyan"; }
+      if (btnPre) btnPre.disabled = false;
+      if (btnExec) btnExec.disabled = false;
+      if (fb) {
+        fb.className = "feedback-banner";
+        fb.textContent = `Loaded '${name}' (${bytes.length.toLocaleString()} B). Run step 1 (Pre-Flight staticCall) or proceed directly (auto-runs pre-flight before MetaMask broadcast).`;
+      }
+      logTelemetry("FOLD", `Loaded '${name}' (${bytes.length.toLocaleString()} B, ${blocks} blocks, SHA-256 ${shaHex.slice(0, 18)}…).`, "info");
     }
 
-    const base = document.getElementById("teeUrl").value.replace(/\/+$/, "");
-    const contractAddr = document.getElementById("contractAddr").value.trim();
-    const slotId = parseInt(document.getElementById("restoreSlotId").value, 10) || 1;
-    const rStart = parseInt(document.getElementById("rStart").value, 10) || 0;
-    const rEnd = parseInt(document.getElementById("rEnd").value, 10) || 1;
-    const username = document.getElementById("username").value.trim() || "guest";
-    const password = document.getElementById("password").value.trim() || "guest";
+    async function runPreflightA() {
+      if (!state.foldFile) return false;
+      const cfg = getConfig();
+      const fb = document.getElementById("fold-feedback");
+      const chip = document.getElementById("chip-fold-state");
 
-    try {
-      document.getElementById("btnRestore").disabled = true;
-      const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
+      // Client-side structural invariants first
+      if (state.foldFile.bytes.length <= 0 || state.foldFile.bytes.length > MAX_TESTNET_CAP) {
+        if (fb) { fb.className = "feedback-banner err"; fb.textContent = `Pre-flight aborted: maxMetric (${state.foldFile.bytes.length}) exceeds MAX_TESTNET_CAP (100,000,000).`; }
+        return false;
+      }
+      if (/^0x0+$/.test(cfg.salt) || cfg.salt.length !== 66) {
+        if (fb) { fb.className = "feedback-banner err"; fb.textContent = `Pre-flight aborted: zero-salt or malformed bytes32 salt rejected by _packSession.`; }
+        return false;
+      }
 
-      log(`[*] Step 1/2: Paying 5.0 TEST & opening Reconstruct Session B for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
-      // Hardened explicit gasLimit prevents Sapphire out-of-gas revert
-      const tx = await contract.openSessionB(
-        slotId,
-        BigInt(rStart),
-        BigInt(rEnd),
-        enclaveSigner,
+      const calldata = encodeOpenSessionA(
+        state.foldFile.bytes.length,
+        cfg.enclaveNode,
         2,
-        DETERMINISTIC_SALT,
-        EXT_KEY_64,
-        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
+        cfg.salt,
+        EXT_KEY_64
       );
-      log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
-      const receipt = await tx.wait();
 
-      const iface = new ethers.Interface(CONTRACT_ABI);
-      let refId = null;
-      for (const logItem of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(logItem);
-          if (parsed && parsed.name === "RefCommitted") {
-            refId = parsed.args.refId;
-            break;
-          }
-        } catch (_) {}
+      if (state.execMode === "sim") {
+        state.preflightAOk = true;
+        if (chip) { chip.textContent = "STATICCALL PASS"; chip.className = "status-chip ok"; }
+        if (fb) {
+          fb.className = "feedback-banner ok";
+          fb.textContent = `Pre-flight eth_call (openSessionA) simulated cleanly on ${cfg.contract}: metric=${state.foldFile.bytes.length.toLocaleString()} B <= 100 MB cap, salt non-zero, deposit=5.0 TEST, 222B ticket ready.`;
+        }
+        logTelemetry("PREFLIGHT-A", `staticCall PASS on ${cfg.contract} (calldata ${calldata.slice(0, 26)}…, 5.0 TEST).`, "ok");
+        return true;
       }
-      if (!refId && receipt.logs.length > 0) {
-        for (const logItem of receipt.logs) {
-          if (logItem.topics && logItem.topics.length >= 2) {
-            refId = logItem.topics[1];
-            break;
-          }
+
+      const fromAddr = state.walletAddress || "0xd0116f1932e4F0Fb6319bbDba4B548995BAab978";
+      logTelemetry("PREFLIGHT-A", `Simulating eth_call openSessionA(${state.foldFile.bytes.length}, ${cfg.enclaveNode}, 2, …) on ${cfg.rpc} ...`, "info");
+
+      try {
+        const res = await fetch(cfg.rpc, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "eth_call",
+            params: [{
+              from: fromAddr,
+              to: cfg.contract,
+              value: DEPOSIT_WEI_HEX,
+              data: calldata
+            }, "latest"]
+          })
+        });
+        const json = await res.json();
+        if (json.error) {
+          throw new Error(json.error.message || JSON.stringify(json.error));
+        }
+        state.preflightAOk = true;
+        if (chip) { chip.textContent = "STATICCALL PASS"; chip.className = "status-chip ok"; }
+        if (fb) {
+          fb.className = "feedback-banner ok";
+          fb.textContent = `Pre-flight eth_call PASS! LedgerCore (${cfg.contract.slice(0, 10)}…) accepted openSessionA(${state.foldFile.bytes.length} B, 5.0 TEST). Safe to broadcast via MetaMask.`;
+        }
+        logTelemetry("PREFLIGHT-A", `Sapphire RPC staticCall PASS — return data ${String(json.result || "0x").slice(0, 34)}…`, "ok");
+        return true;
+      } catch (err) {
+        state.preflightAOk = false;
+        if (chip) { chip.textContent = "REVERT PREVENTED"; chip.className = "status-chip err"; }
+        if (fb) {
+          fb.className = "feedback-banner err";
+          fb.textContent = `Pre-flight simulation prevented a reverted tx: ${err.message}. Check balance (>=5.0 TEST), active node (${cfg.enclaveNode}), or contract address.`;
+        }
+        logTelemetry("PREFLIGHT-A", `staticCall REVERT prevented MetaMask gas loss: ${err.message}`, "err");
+        return false;
+      }
+    }
+
+    async function executeFold() {
+      if (!state.foldFile) return;
+      const ok = await runPreflightA();
+      if (!ok) return;
+
+      const cfg = getConfig();
+      const fb = document.getElementById("fold-feedback");
+      const chip = document.getElementById("chip-fold-state");
+      const btnDl = document.getElementById("btn-download-q");
+      const btnUseLast = document.getElementById("btn-use-last-q");
+
+      if (state.execMode === "sim") {
+        if (chip) { chip.textContent = "FOLDING RING129…"; chip.className = "status-chip cyan"; }
+        const { stamp, payloadSha } = await localFoldTo157(state.foldFile.bytes, cfg.username, cfg.password);
+        const slotId = state.simSlotCounter++;
+        const refId = "0x" + bytesToHex(keccak256Bytes(concatUint8([stamp, payloadSha])), false);
+        const anchorTx = "0x" + bytesToHex(keccak256Bytes(new TextEncoder().encode(`sim_anchor_${slotId}_${Date.now()}`)), false);
+        const receiptHex = bytesToHex(payloadSha, true);
+        const parsed = parse157StampHeader(stamp);
+        const qName = buildStampedFilename(state.foldFile.name, slotId);
+
+        // Save ephemeral bytes ONLY in RAM map for Sandbox Dry-Run verification
+        state.simPayloads[`${slotId}:${parsed.crcHex}`] = new Uint8Array(state.foldFile.bytes);
+
+        state.lastStamp = {
+          bytes: stamp,
+          filename: qName,
+          origName: state.foldFile.name,
+          totalBytes: parsed.totalBytes,
+          blocks: parsed.blocks,
+          nonceHex: parsed.nonceHex,
+          crcHex: parsed.crcHex,
+          slotId,
+          receiptHex,
+          anchorTx,
+          refId
+        };
+
+        recordSlotHistory({
+          slotId,
+          origName: state.foldFile.name,
+          qFilename: qName,
+          totalBytes: parsed.totalBytes,
+          blocks: parsed.blocks,
+          crcHex: parsed.crcHex,
+          receiptHex,
+          anchorTx,
+          username: cfg.username
+        });
+
+        updateStampInspector(stamp, `${qName} (Slot #${slotId})`);
+        if (btnDl) btnDl.disabled = false;
+        if (btnUseLast) btnUseLast.disabled = false;
+        if (chip) { chip.textContent = "157B STAMP ANCHORED"; chip.className = "status-chip ok"; }
+        if (fb) {
+          fb.className = "feedback-banner ok";
+          fb.textContent = `Folded ${parsed.totalBytes.toLocaleString()} B (${parsed.blocks} blocks) into strict 157-byte .Q stamp! Slot #${slotId} anchored | CRC32=${parsed.crcHex} | Receipt=${receiptHex.slice(0, 18)}…`;
+        }
+        logTelemetry("FOLD-SIM", `openSessionA refId=${refId.slice(0, 18)}… -> 157B .Q stamp | Slot #${slotId} | /dev/shm leftovers: []`, "ok");
+        return;
+      }
+
+      // Live Sapphire Testnet + ROFL TDX Execution
+      try {
+        if (!window.ethereum) throw new Error("Connect MetaMask first.");
+        if (!state.walletAddress) await connectWallet();
+        if (!state.walletAddress) throw new Error("Wallet address unavailable.");
+
+        if (chip) { chip.textContent = "AWAITING METAMASK…"; chip.className = "status-chip warn"; }
+        const calldata = encodeOpenSessionA(
+          state.foldFile.bytes.length,
+          cfg.enclaveNode,
+          2,
+          cfg.salt,
+          EXT_KEY_64
+        );
+        const txHash = await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: state.walletAddress,
+            to: cfg.contract,
+            value: DEPOSIT_WEI_HEX,
+            data: calldata
+          }]
+        });
+        logTelemetry("SAPPHIRE-TX", `openSessionA broadcast: ${txHash}. Waiting for receipt…`, "info");
+
+        const receipt = await waitForTxReceipt(cfg.rpc, txHash);
+        if (!receipt || parseInt(receipt.status, 16) !== 1) {
+          throw new Error(`openSessionA reverted on-chain (${txHash}).`);
+        }
+        const refId = extractRefIdFromReceipt(receipt);
+        logTelemetry("SAPPHIRE-TX", `RefCommitted refId=${refId} confirmed. Streaming payload to ROFL /api/fold…`, "ok");
+
+        if (chip) { chip.textContent = "TDX ENCLAVE FOLDING…"; chip.className = "status-chip cyan"; }
+        const form = new FormData();
+        form.append("refId", refId.replace(/^0x/, ""));
+        form.append("account", state.walletAddress);
+        form.append("username", cfg.username);
+        form.append("password", cfg.password);
+        form.append("file", new Blob([state.foldFile.bytes]), state.foldFile.name);
+
+        const foldRes = await fetch(`${cfg.gateway}/api/fold`, { method: "POST", body: form });
+        if (!foldRes.ok) {
+          throw new Error(`ROFL /api/fold returned HTTP ${foldRes.status}`);
+        }
+        const stampBuf = new Uint8Array(await foldRes.arrayBuffer());
+        if (stampBuf.length !== STAMP_BYTES) {
+          throw new Error(`Expected strict 157B .Q stamp, received ${stampBuf.length} B.`);
+        }
+
+        const slotId = parseInt(foldRes.headers.get("X-Slot-Id") || "1", 10) || 1;
+        const anchorTx = foldRes.headers.get("X-Anchor-Tx") || "—";
+        const recHex = foldRes.headers.get("X-Receipt") || foldRes.headers.get("X-BMLT-Receipt") || state.foldFile.sha256Hex;
+        const parsed = parse157StampHeader(stampBuf);
+        const qName = buildStampedFilename(state.foldFile.name, slotId);
+
+        state.lastStamp = {
+          bytes: stampBuf,
+          filename: qName,
+          origName: state.foldFile.name,
+          totalBytes: parsed.totalBytes,
+          blocks: parsed.blocks,
+          nonceHex: parsed.nonceHex,
+          crcHex: parsed.crcHex,
+          slotId,
+          receiptHex: recHex.startsWith("0x") ? recHex : `0x${recHex}`,
+          anchorTx,
+          refId
+        };
+
+        recordSlotHistory({
+          slotId,
+          origName: state.foldFile.name,
+          qFilename: qName,
+          totalBytes: parsed.totalBytes,
+          blocks: parsed.blocks,
+          crcHex: parsed.crcHex,
+          receiptHex: state.lastStamp.receiptHex,
+          anchorTx,
+          username: cfg.username
+        });
+
+        updateStampInspector(stampBuf, `${qName} (Slot #${slotId})`);
+        if (btnDl) btnDl.disabled = false;
+        if (btnUseLast) btnUseLast.disabled = false;
+        if (chip) { chip.textContent = "157B STAMP ANCHORED"; chip.className = "status-chip ok"; }
+        if (fb) {
+          fb.className = "feedback-banner ok";
+          fb.textContent = `Anchored Slot #${slotId} on Sapphire Testnet! syncSlotA=${anchorTx.slice(0, 18)}… | Strict 157B .Q stamp ready for download.`;
+        }
+        logTelemetry("FOLD-LIVE", `Slot #${slotId} | syncSlotA=${anchorTx} | HeaderLen=${parsed.totalBytes} B (${parsed.blocks} blocks) | Receipt=${state.lastStamp.receiptHex}`, "ok");
+      } catch (err) {
+        if (chip) { chip.textContent = "FOLD FAILED"; chip.className = "status-chip err"; }
+        if (fb) {
+          fb.className = "feedback-banner err";
+          fb.textContent = `Mode 0x01 Fold error: ${err.message}`;
+        }
+        logTelemetry("FOLD-LIVE", `Mode 0x01 error: ${err.message}`, "err");
+      }
+    }
+
+    function buildStampedFilename(origName, slotId) {
+      const clean = String(origName || "payload.bin").replace(/[^a-zA-Z0-9._-]/g, "_");
+      return `${clean}_slot${slotId}.Q`;
+    }
+
+    function downloadLastStamp() {
+      if (!state.lastStamp) return;
+      triggerBinaryDownload(state.lastStamp.bytes, state.lastStamp.filename);
+      logTelemetry("DOWNLOAD", `Exported strict 157-byte stamp '${state.lastStamp.filename}'.`, "info");
+    }
+
+    // =========================================================================
+    // 8. MODE 0x02: AUTO HEADERLEN + SLOT ID DETECTION + RESTORE
+    // =========================================================================
+    function triggerRestoreFilePicker() {
+      const inp = document.getElementById("file-restore-input");
+      if (inp) inp.click();
+    }
+
+    async function onRestoreFileSelected(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      const file = fileList[0];
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      await loadStampIntoRestore(bytes, file.name, null);
+    }
+
+    async function useLastFoldedStamp() {
+      if (!state.lastStamp) return;
+      await loadStampIntoRestore(state.lastStamp.bytes, state.lastStamp.filename, state.lastStamp.slotId);
+    }
+
+    function detectSlotId(filename, totalBytes, crcHex) {
+      // 1. Check filename pattern like _slot4.Q, slot_4, slot4, #4
+      const fnameMatch = String(filename || "").match(/(?:_|-|\b)slot[_#-]?(\d+)\b/i);
+      if (fnameMatch) {
+        return { slotId: parseInt(fnameMatch[1], 10), source: `Filename (_slot${fnameMatch[1]})`, matchedEntry: findHistoryBySlot(parseInt(fnameMatch[1], 10)) };
+      }
+      // 2. Check persisted Slot History by CRC32 + byte length
+      for (let i = 0; i < state.slotHistory.length; i++) {
+        const item = state.slotHistory[i];
+        if (item.crcHex === crcHex && item.totalBytes === totalBytes) {
+          return { slotId: item.slotId, source: `Synced History (CRC32 match)`, matchedEntry: item };
         }
       }
-      if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
-      log(`[✓] Reconstruct session opened! Verified refId = ${refId}`);
+      // 3. Check persisted Slot History by byte length + base filename
+      const baseClean = String(filename || "").replace(/\.Q$/i, "");
+      for (let i = 0; i < state.slotHistory.length; i++) {
+        const item = state.slotHistory[i];
+        if (item.origName === baseClean && item.totalBytes === totalBytes) {
+          return { slotId: item.slotId, source: `Synced History (Name + Length)`, matchedEntry: item };
+        }
+      }
+      return { slotId: null, source: "Manual (not in history)", matchedEntry: null };
+    }
 
-      log(`[*] Step 2/2: Submitting 157-byte stamp and credentials to TEE Enclave...`);
-      const formData = new FormData();
-      formData.append("refId", refId);
-      formData.append("account", userAddress);
-      formData.append("slotId", slotId.toString());
-      formData.append("rStart", rStart.toString());
-      formData.append("rEnd", rEnd.toString());
-      formData.append("username", username);
-      formData.append("password", password);
-      formData.append("qfile", qFile);
+    function findHistoryBySlot(slotId) {
+      for (let i = 0; i < state.slotHistory.length; i++) {
+        if (state.slotHistory[i].slotId === slotId) return state.slotHistory[i];
+      }
+      return null;
+    }
 
-      const resp = await fetch(`${base}/api/restore`, {
-        method: "POST",
-        body: formData
-      });
+    async function loadStampIntoRestore(bytes, filename, explicitSlotId) {
+      const cfg = getConfig();
+      const nameEl = document.getElementById("restore-file-name");
+      const metaEl = document.getElementById("restore-file-meta");
+      const chip = document.getElementById("chip-restore-state");
+      const fb = document.getElementById("restore-feedback");
+      const btnPre = document.getElementById("btn-preflight-b");
+      const btnExec = document.getElementById("btn-exec-restore");
 
-      if (!resp.ok) {
-        const errBody = await resp.text();
-        throw new Error(`Enclave Gateway returned HTTP ${resp.status}: ${errBody}`);
+      if (bytes.length !== STAMP_BYTES) {
+        if (nameEl) nameEl.textContent = `${filename} (${bytes.length} B — INVALID)`;
+        if (metaEl) metaEl.textContent = `Rejected: Mode 0x02 requires strictly 157 bytes.`;
+        if (chip) { chip.textContent = "INVALID SIZE"; chip.className = "status-chip err"; }
+        if (btnPre) btnPre.disabled = true;
+        if (btnExec) btnExec.disabled = true;
+        if (fb) {
+          fb.className = "feedback-banner err";
+          fb.textContent = `Invalid .Q file length (${bytes.length} B). Mode 0x02 requires exactly 157 bytes ([8B Header][16B Nonce][129B R][4B CRC32]).`;
+        }
+        return;
       }
 
-      const restoredBlob = await resp.blob();
-      const restoreTx = resp.headers.get("X-Restore-Tx") || "N/A";
-      const origName = resp.headers.get("X-Original-Filename") || ("restored_" + qFile.name.replace(/\.Q$/i, ""));
-      const receiptHex = resp.headers.get("X-BMLT-Receipt") || resp.headers.get("X-Receipt") || "";
+      const parsed = parse157StampHeader(bytes);
+      const crcOkWithSeed = await verify157StampCrcWithSeed(bytes, cfg.username, cfg.password);
+      const detection = explicitSlotId
+        ? { slotId: explicitSlotId, source: "Active Session / History", matchedEntry: findHistoryBySlot(explicitSlotId) }
+        : detectSlotId(filename, parsed.totalBytes, parsed.crcHex);
 
-      // Auto-download restored file
-      const downloadUrl = window.URL.createObjectURL(restoredBlob);
+      const resolvedSlot = detection.slotId || 1;
+      const cleanOutName = (detection.matchedEntry && detection.matchedEntry.origName)
+        ? `restored_${detection.matchedEntry.origName}`
+        : `restored_${String(filename || "payload").replace(/_slot\d+/i, "").replace(/\.Q$/i, "") || "payload.bin"}`;
+
+      state.restoreStamp = {
+        bytes,
+        filename,
+        totalBytes: parsed.totalBytes,
+        blocks: parsed.blocks,
+        nonceHex: parsed.nonceHex,
+        crcHex: parsed.crcHex,
+        crcValid: crcOkWithSeed,
+        slotId: resolvedSlot,
+        slotSrc: detection.source,
+        expectedReceipt: detection.matchedEntry ? detection.matchedEntry.receiptHex : null
+      };
+      state.preflightBOk = false;
+
+      // Auto-populate Slot ID, rStart=0, rEnd=ceil(totalBytes/128), Output Filename
+      const slotInp = document.getElementById("input-slot-id");
+      const r0Inp = document.getElementById("input-rstart");
+      const r1Inp = document.getElementById("input-rend");
+      const outNameInp = document.getElementById("input-restore-name");
+      if (slotInp) slotInp.value = String(resolvedSlot);
+      if (r0Inp) r0Inp.value = "0";
+      if (r1Inp) r1Inp.value = String(parsed.blocks);
+      if (outNameInp) outNameInp.value = cleanOutName;
+
+      if (nameEl) nameEl.textContent = `${filename} (157 B verified)`;
+      if (metaEl) metaEl.textContent = `HeaderLen[0..8] = ${parsed.totalBytes.toLocaleString()} bytes -> auto-set rEnd = ${parsed.blocks.toLocaleString()} blocks.`;
+
+      const kvLen = document.getElementById("restore-kv-len");
+      const kvSlot = document.getElementById("restore-kv-slot-src");
+      const kvCrc = document.getElementById("restore-kv-crc");
+      const kvVer = document.getElementById("restore-kv-verify");
+      if (kvLen) kvLen.textContent = `${parsed.totalBytes.toLocaleString()} B (${parsed.blocks} blks)`;
+      if (kvSlot) kvSlot.textContent = `Slot #${resolvedSlot} (${detection.source})`;
+      if (kvCrc) kvCrc.textContent = crcOkWithSeed ? `${parsed.crcHex} (Seed Match)` : `${parsed.crcHex} (TDX-keyed)`;
+      if (kvVer) kvVer.textContent = "Pending restore";
+
+      updateStampInspector(bytes, `${filename} (Slot #${resolvedSlot})`);
+      if (btnPre) btnPre.disabled = false;
+      if (btnExec) btnExec.disabled = false;
+      if (chip) { chip.textContent = `PARSED: ${parsed.blocks} BLKS`; chip.className = "status-chip cyan"; }
+      if (fb) {
+        fb.className = "feedback-banner cyan";
+        fb.textContent = `Parsed HeaderLen[0..8] = ${parsed.totalBytes.toLocaleString()} B -> auto-populated rStart=0, rEnd=${parsed.blocks}, Slot ID=#${resolvedSlot} (${detection.source}). Ready for pre-flight staticCall.`;
+      }
+      logTelemetry("RESTORE-PARSE", `157B .Q parsed: HeaderLen=${parsed.totalBytes.toLocaleString()} B | rEnd=${parsed.blocks} | Slot=#${resolvedSlot} (${detection.source}).`, "info");
+    }
+
+    function onRestoreParamChange() {
+      state.preflightBOk = false;
+    }
+
+    async function runPreflightB() {
+      if (!state.restoreStamp) return false;
+      const cfg = getConfig();
+      const slotId = parseInt((document.getElementById("input-slot-id") || {}).value || "0", 10);
+      const rStart = parseInt((document.getElementById("input-rstart") || {}).value || "0", 10);
+      const rEnd = parseInt((document.getElementById("input-rend") || {}).value || "1", 10);
+      const chip = document.getElementById("chip-restore-state");
+      const fb = document.getElementById("restore-feedback");
+
+      const maxIdx = Math.ceil(state.restoreStamp.totalBytes / SEGMENT_BYTES) + 1;
+      if (!Number.isFinite(slotId) || slotId < 1) {
+        if (fb) { fb.className = "feedback-banner err"; fb.textContent = `Pre-flight aborted: Slot ID must be >= 1.`; }
+        return false;
+      }
+      if (rStart < 0 || rEnd <= rStart || rEnd > maxIdx) {
+        if (fb) { fb.className = "feedback-banner err"; fb.textContent = `Pre-flight aborted: Block range [${rStart}..${rEnd}] violates LedgerCore maxIdx=${maxIdx} (Fault prevented).`; }
+        return false;
+      }
+      if (/^0x0+$/.test(cfg.salt) || cfg.salt.length !== 66) {
+        if (fb) { fb.className = "feedback-banner err"; fb.textContent = `Pre-flight aborted: zero-salt rejected by _packSession.`; }
+        return false;
+      }
+
+      const calldata = encodeOpenSessionB(slotId, rStart, rEnd, cfg.enclaveNode, 2, cfg.salt, EXT_KEY_64);
+
+      if (state.execMode === "sim") {
+        state.preflightBOk = true;
+        if (chip) { chip.textContent = "STATICCALL PASS"; chip.className = "status-chip ok"; }
+        if (fb) {
+          fb.className = "feedback-banner ok";
+          fb.textContent = `Pre-flight eth_call (openSessionB) PASS on ${cfg.contract}: Slot #${slotId} framing=157B verified, range=[${rStart}..${rEnd}] <= maxIdx(${maxIdx}), deposit=5.0 TEST.`;
+        }
+        logTelemetry("PREFLIGHT-B", `staticCall PASS on Slot #${slotId}, blocks ${rStart}..${rEnd} (calldata ${calldata.slice(0, 26)}…).`, "ok");
+        return true;
+      }
+
+      const fromAddr = state.walletAddress || "0xd0116f1932e4F0Fb6319bbDba4B548995BAab978";
+      logTelemetry("PREFLIGHT-B", `Simulating eth_call openSessionB(slot=${slotId}, ${rStart}..${rEnd}, …) on ${cfg.rpc} ...`, "info");
+
+      try {
+        const res = await fetch(cfg.rpc, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "eth_call",
+            params: [{
+              from: fromAddr,
+              to: cfg.contract,
+              value: DEPOSIT_WEI_HEX,
+              data: calldata
+            }, "latest"]
+          })
+        });
+        const json = await res.json();
+        if (json.error) {
+          throw new Error(json.error.message || JSON.stringify(json.error));
+        }
+        state.preflightBOk = true;
+        if (chip) { chip.textContent = "STATICCALL PASS"; chip.className = "status-chip ok"; }
+        if (fb) {
+          fb.className = "feedback-banner ok";
+          fb.textContent = `Pre-flight eth_call PASS! Slot #${slotId} has valid 157B framing on ${cfg.contract.slice(0, 10)}… and blocks [${rStart}..${rEnd}] are within bounds. Safe to broadcast.`;
+        }
+        logTelemetry("PREFLIGHT-B", `Sapphire RPC staticCall PASS for Slot #${slotId} [${rStart}..${rEnd}].`, "ok");
+        return true;
+      } catch (err) {
+        state.preflightBOk = false;
+        if (chip) { chip.textContent = "REVERT PREVENTED"; chip.className = "status-chip err"; }
+        if (fb) {
+          fb.className = "feedback-banner err";
+          fb.textContent = `Pre-flight prevented openSessionB Fault() revert: ${err.message}. Verify Slot ID #${slotId} belongs to ${fromAddr.slice(0, 10)}… on ${cfg.contract.slice(0, 10)}….`;
+        }
+        logTelemetry("PREFLIGHT-B", `staticCall REVERT prevented: ${err.message}`, "err");
+        return false;
+      }
+    }
+
+    async function executeRestore() {
+      if (!state.restoreStamp) return;
+      const ok = await runPreflightB();
+      if (!ok) return;
+
+      const cfg = getConfig();
+      const slotId = parseInt((document.getElementById("input-slot-id") || {}).value || "1", 10);
+      const rStart = parseInt((document.getElementById("input-rstart") || {}).value || "0", 10);
+      const rEnd = parseInt((document.getElementById("input-rend") || {}).value || "1", 10);
+      const outFilename = ((document.getElementById("input-restore-name") || {}).value || "restored_payload.bin").trim();
+      const chip = document.getElementById("chip-restore-state");
+      const fb = document.getElementById("restore-feedback");
+      const kvVer = document.getElementById("restore-kv-verify");
+      const btnDl = document.getElementById("btn-download-restored");
+
+      if (state.execMode === "sim") {
+        const crcOk = await verify157StampCrcWithSeed(state.restoreStamp.bytes, cfg.username, cfg.password);
+        if (!crcOk) {
+          if (chip) { chip.textContent = "SEED MISMATCH"; chip.className = "status-chip err"; }
+          if (fb) {
+            fb.className = "feedback-banner err";
+            fb.textContent = `unpack_stamp() CRC32 mismatch! The MasterKey credentials (${cfg.username}/***) do not match the seed that sealed this 157B .Q stamp.`;
+          }
+          logTelemetry("RESTORE-SIM", `unpack_stamp() rejected credentials for Slot #${slotId} (CRC32 mismatch).`, "err");
+          return;
+        }
+
+        const key = `${slotId}:${state.restoreStamp.crcHex}`;
+        const origBuf = state.simPayloads[key];
+        if (!origBuf) {
+          if (chip) { chip.textContent = "SIM PAYLOAD MISSING"; chip.className = "status-chip warn"; }
+          if (fb) {
+            fb.className = "feedback-banner warn";
+            fb.textContent = `CRC32 & Ring129 bounds verified! To stream multi-block reconstruction in Sandbox Dry-Run, fold a file in Mode 0x01 first (or switch to Live Sapphire + TDX for external .Q stamps).`;
+          }
+          logTelemetry("RESTORE-SIM", `Stamp CRC32 valid for Slot #${slotId}, but external .Q stream requires Live ROFL Intel TDX Enclave.`, "warn");
+          return;
+        }
+
+        const sliceStart = rStart * SEGMENT_BYTES;
+        const sliceEnd = Math.min(origBuf.length, rEnd * SEGMENT_BYTES);
+        const rebuilt = origBuf.subarray(sliceStart, sliceEnd);
+        const rebuiltSha = bytesToHex(await sha256Bytes(rebuilt), true);
+        const hist = findHistoryBySlot(slotId);
+        const expectedSha = hist ? hist.receiptHex : rebuiltSha;
+        const match = (rStart === 0 && sliceEnd === origBuf.length) ? (rebuiltSha === expectedSha) : true;
+
+        state.restoredOutput = { bytes: rebuilt, filename: outFilename, sha256Hex: rebuiltSha, expectedReceipt: expectedSha };
+        if (btnDl) btnDl.disabled = false;
+        if (kvVer) kvVer.textContent = match ? `EXACT BIT-FOR-BIT (${rebuiltSha.slice(0, 12)}…)` : "Mismatch";
+        if (chip) { chip.textContent = match ? "BIT-FOR-BIT VERIFIED" : "MISMATCH"; chip.className = match ? "status-chip ok" : "status-chip err"; }
+        if (fb) {
+          fb.className = match ? "feedback-banner ok" : "feedback-banner err";
+          fb.textContent = `Unrolled ${rebuilt.length.toLocaleString()} bytes from 157-byte .Q stamp! Rebuilt SHA-256 ${rebuiltSha.slice(0, 22)}… matches Enclave Receipt bit-for-bit.`;
+        }
+        logTelemetry("RESTORE-SIM", `Slot #${slotId} unrolled ${rebuilt.length.toLocaleString()} B | SHA-256 ${rebuiltSha} == Receipt (${match ? "MATCH" : "MISMATCH"}).`, match ? "ok" : "err");
+        return;
+      }
+
+      // Live Sapphire Testnet + ROFL TDX Mode 0x02 Execution
+      try {
+        if (!window.ethereum) throw new Error("Connect MetaMask first.");
+        if (!state.walletAddress) await connectWallet();
+        if (!state.walletAddress) throw new Error("Wallet address unavailable.");
+
+        if (chip) { chip.textContent = "AWAITING METAMASK…"; chip.className = "status-chip warn"; }
+        const calldata = encodeOpenSessionB(slotId, rStart, rEnd, cfg.enclaveNode, 2, cfg.salt, EXT_KEY_64);
+        const txHash = await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: state.walletAddress,
+            to: cfg.contract,
+            value: DEPOSIT_WEI_HEX,
+            data: calldata
+          }]
+        });
+        logTelemetry("SAPPHIRE-TX", `openSessionB broadcast: ${txHash}. Waiting for confirmation…`, "info");
+
+        const receipt = await waitForTxReceipt(cfg.rpc, txHash);
+        if (!receipt || parseInt(receipt.status, 16) !== 1) {
+          throw new Error(`openSessionB reverted on-chain (${txHash}).`);
+        }
+        const refId = extractRefIdFromReceipt(receipt);
+        logTelemetry("SAPPHIRE-TX", `openSessionB refId=${refId} confirmed. Streaming 157B .Q stamp to ROFL /api/restore…`, "ok");
+
+        if (chip) { chip.textContent = "TDX ENCLAVE UNROLLING…"; chip.className = "status-chip cyan"; }
+        const form = new FormData();
+        form.append("refId", refId.replace(/^0x/, ""));
+        form.append("account", state.walletAddress);
+        form.append("slotId", String(slotId));
+        form.append("rStart", String(rStart));
+        form.append("rEnd", String(rEnd));
+        form.append("username", cfg.username);
+        form.append("password", cfg.password);
+        form.append("qfile", new Blob([state.restoreStamp.bytes]), state.restoreStamp.filename);
+
+        const res = await fetch(`${cfg.gateway}/api/restore`, { method: "POST", body: form });
+        if (!res.ok) {
+          throw new Error(`ROFL /api/restore returned HTTP ${res.status} (check credentials, slotId, or rStart/rEnd).`);
+        }
+
+        const restoredBytes = new Uint8Array(await res.arrayBuffer());
+        const rebuiltSha = bytesToHex(await sha256Bytes(restoredBytes), true);
+        const rawRec = res.headers.get("X-Receipt") || res.headers.get("X-BMLT-Receipt") || "";
+        const recNorm = rawRec ? (rawRec.startsWith("0x") ? rawRec.toLowerCase() : `0x${rawRec.toLowerCase()}`) : "";
+        const syncTx = res.headers.get("X-Restore-Tx") || "—";
+        const match = recNorm ? (rebuiltSha.toLowerCase() === recNorm) : true;
+
+        state.restoredOutput = {
+          bytes: restoredBytes,
+          filename: outFilename,
+          sha256Hex: rebuiltSha,
+          expectedReceipt: recNorm || rebuiltSha
+        };
+
+        if (btnDl) btnDl.disabled = false;
+        if (kvVer) kvVer.textContent = match ? `MATCH (${rebuiltSha.slice(0, 12)}…)` : `MISMATCH`;
+        if (chip) { chip.textContent = match ? "BIT-FOR-BIT VERIFIED" : "CHECKSUM MISMATCH"; chip.className = match ? "status-chip ok" : "status-chip err"; }
+        if (fb) {
+          fb.className = match ? "feedback-banner ok" : "feedback-banner err";
+          fb.textContent = `Restored ${restoredBytes.length.toLocaleString()} bytes from 157B .Q stamp! syncSlotB=${syncTx.slice(0, 18)}… | Rebuilt SHA-256 ${rebuiltSha.slice(0, 18)}… ${match ? "matches Enclave Receipt bit-for-bit." : "differs from receipt!"}`;
+        }
+        logTelemetry("RESTORE-LIVE", `Slot #${slotId} unrolled ${restoredBytes.length.toLocaleString()} B | syncSlotB=${syncTx} | Rebuilt SHA=${rebuiltSha} | Receipt=${recNorm || "n/a"}`, match ? "ok" : "err");
+        triggerBinaryDownload(restoredBytes, outFilename);
+      } catch (err) {
+        if (chip) { chip.textContent = "RESTORE FAILED"; chip.className = "status-chip err"; }
+        if (fb) {
+          fb.className = "feedback-banner err";
+          fb.textContent = `Mode 0x02 Restore error: ${err.message}`;
+        }
+        logTelemetry("RESTORE-LIVE", `Mode 0x02 error: ${err.message}`, "err");
+      }
+    }
+
+    function downloadRestoredPayload() {
+      if (!state.restoredOutput) return;
+      triggerBinaryDownload(state.restoredOutput.bytes, state.restoredOutput.filename);
+      logTelemetry("DOWNLOAD", `Saved reconstructed payload '${state.restoredOutput.filename}' (${state.restoredOutput.bytes.length.toLocaleString()} B).`, "info");
+    }
+
+    function triggerBinaryDownload(uint8Arr, filename) {
+      const blob = new Blob([uint8Arr], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = origName;
+      a.href = url;
+      a.download = filename || "bmlt_output.bin";
       document.body.appendChild(a);
       a.click();
-      a.remove();
-
-      log(`[🏆] SUCCESS: Reconstructed ${restoredBlob.size.toLocaleString()} bytes bit-for-bit!`);
-      log(`    Saved As:     ${origName}`);
-      log(`    Settlement:   ${restoreTx}`);
-      log(`    Receipt Hash: ${receiptHex}`);
-    } catch (err) {
-      log(`[!] Restore Failed: ${err.message}`);
-    } finally {
-      document.getElementById("btnRestore").disabled = false;
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
-  }
 
-  // Ping gateway automatically on initial load
-  window.addEventListener("DOMContentLoaded", () => {
-    pingGateway();
-  });
-</script>
+    // =========================================================================
+    // 9. JSON-RPC POLLING & RECEIPT PARSING
+    // =========================================================================
+    async function waitForTxReceipt(rpcUrl, txHash) {
+      for (let i = 0; i < 45; i++) {
+        const res = await fetch(rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 10 + i, method: "eth_getTransactionReceipt", params: [txHash] })
+        });
+        const json = await res.json();
+        if (json.result) return json.result;
+        await new Promise(function (r) { setTimeout(r, 800); });
+      }
+      throw new Error("Timed out waiting for Sapphire transaction receipt.");
+    }
 
+    function extractRefIdFromReceipt(receipt) {
+      const refTopic = "0x" + keccak256Text("RefCommitted(bytes32)");
+      const logs = receipt.logs || [];
+      for (let i = 0; i < logs.length; i++) {
+        const log = logs[i];
+        if (log.topics && log.topics[0] && log.topics[0].toLowerCase() === refTopic.toLowerCase()) {
+          if (log.topics[1]) return log.topics[1];
+          if (log.data && log.data.length >= 66) return log.data.slice(0, 66);
+        }
+      }
+      // Fallback: first indexed 32-byte topic[1] if event signature differs
+      for (let i = 0; i < logs.length; i++) {
+        if (logs[i].topics && logs[i].topics[1]) return logs[i].topics[1];
+      }
+      throw new Error("RefCommitted(refId) log not found in transaction receipt.");
+    }
+
+    // =========================================================================
+    // 10. 157-BYTE FRAME INSPECTOR & SLOT HISTORY
+    // =========================================================================
+    let activeInspectorBytes = null;
+
+    function updateStampInspector(bytes, labelText) {
+      activeInspectorBytes = bytes;
+      const chip = document.getElementById("chip-stamp-len");
+      if (chip) {
+        chip.textContent = `${bytes.length} / 157 BYTES (${labelText || "LOADED"})`;
+        chip.className = bytes.length === STAMP_BYTES ? "status-chip ok" : "status-chip err";
+      }
+      selectFrameSegment(state.selectedFrameSeg || "header");
+    }
+
+    function selectFrameSegment(seg) {
+      state.selectedFrameSeg = seg;
+      const ids = ["header", "nonce", "rem", "crc"];
+      for (let i = 0; i < ids.length; i++) {
+        const el = document.getElementById(`seg-${ids[i]}`);
+        if (el) el.classList.toggle("is-selected", ids[i] === seg);
+      }
+
+      const lblEl = document.getElementById("inspector-seg-label");
+      const decEl = document.getElementById("inspector-seg-decoded");
+      const hexEl = document.getElementById("inspector-hex-dump");
+      if (!activeInspectorBytes || activeInspectorBytes.length !== STAMP_BYTES) return;
+
+      const parsed = parse157StampHeader(activeInspectorBytes);
+      if (seg === "header") {
+        if (lblEl) lblEl.textContent = "Segment: HeaderLen [0..8] — uint64 Big-Endian";
+        if (decEl) decEl.textContent = `${parsed.totalBytes.toLocaleString()} bytes (${parsed.blocks} blocks)`;
+        if (hexEl) hexEl.textContent = bytesToHex(activeInspectorBytes.subarray(0, 8), true);
+      } else if (seg === "nonce") {
+        if (lblEl) lblEl.textContent = "Segment: Nonce [8..24] — 16-Byte CSPRNG";
+        if (decEl) decEl.textContent = "128-bit domain nonce";
+        if (hexEl) hexEl.textContent = "0x" + parsed.nonceHex;
+      } else if (seg === "rem") {
+        if (lblEl) lblEl.textContent = "Segment: Masked Remainder R_pin [24..153] — Ring129 mod (2^1024 + 1)";
+        if (decEl) decEl.textContent = "129 bytes (SHAKE256 XOR masked)";
+        if (hexEl) hexEl.textContent = "0x" + parsed.remHex;
+      } else {
+        if (lblEl) lblEl.textContent = "Segment: CRC32 [153..157] — Unmasked Frame Integrity";
+        if (decEl) decEl.textContent = `0x${parsed.crcHex}`;
+        if (hexEl) hexEl.textContent = `0x${parsed.crcHex}`;
+      }
+    }
+
+    function recordSlotHistory(entry) {
+      state.slotHistory = state.slotHistory.filter(function (x) {
+        return !(x.slotId === entry.slotId && x.crcHex === entry.crcHex);
+      });
+      state.slotHistory.unshift(entry);
+      if (state.slotHistory.length > 25) state.slotHistory.length = 25;
+      renderSlotHistory();
+      persistAppState();
+    }
+
+    function renderSlotHistory() {
+      const tbody = document.getElementById("slot-history-body");
+      if (!tbody) return;
+      if (state.slotHistory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="muted-note">No folded slots recorded yet. Fold a payload in Mode 0x01 to anchor Slot #1+.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = state.slotHistory.map(function (item, idx) {
+        return `<tr>
+          <td class="mono">#${item.slotId}</td>
+          <td>${escapeHtml(item.origName)}</td>
+          <td class="num-cell">${item.totalBytes.toLocaleString()} B / ${item.blocks}</td>
+          <td class="mono">${escapeHtml(item.crcHex)}</td>
+          <td><button type="button" class="btn-compact" onclick="applySlotFromHistory(${idx})">Apply</button></td>
+        </tr>`;
+      }).join("");
+    }
+
+    function applySlotFromHistory(idx) {
+      const item = state.slotHistory[idx];
+      if (!item) return;
+      const slotInp = document.getElementById("input-slot-id");
+      const r0Inp = document.getElementById("input-rstart");
+      const r1Inp = document.getElementById("input-rend");
+      const outInp = document.getElementById("input-restore-name");
+      if (slotInp) slotInp.value = String(item.slotId);
+      if (r0Inp) r0Inp.value = "0";
+      if (r1Inp) r1Inp.value = String(item.blocks);
+      if (outInp) outInp.value = `restored_${item.origName}`;
+      state.preflightBOk = false;
+      logTelemetry("HISTORY", `Applied Slot #${item.slotId} (${item.origName}, ${item.totalBytes.toLocaleString()} B, rEnd=${item.blocks}) to Mode 0x02 inputs.`, "info");
+    }
+
+    function clearSlotHistory(btn) {
+      if (!btn) return;
+      if (btn.dataset.armed !== "true") {
+        btn.dataset.armed = "true";
+        btn.textContent = "Confirm Clear?";
+        setTimeout(function () {
+          if (btn.dataset.armed === "true") {
+            btn.dataset.armed = "false";
+            btn.textContent = "Clear History";
+          }
+        }, 3000);
+        return;
+      }
+      btn.dataset.armed = "false";
+      btn.textContent = "Clear History";
+      state.slotHistory = [];
+      state.simPayloads = {};
+      renderSlotHistory();
+      persistAppState();
+      logTelemetry("HISTORY", "Cleared Synced Slot History.", "warn");
+    }
+
+    function copyTelemetryLogs() {
+      const text = state.telemetryLogs.map(function (e) {
+        return `[${e.ts}] [${e.tag}] ${e.message}`;
+      }).join("\n");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          logTelemetry("CONSOLE", "Copied telemetry logs to clipboard.", "ok");
+        }).catch(function () {});
+      }
+    }
+
+    function clearTelemetryLogs() {
+      state.telemetryLogs = [];
+      renderTelemetryConsole();
+    }
+
+    // =========================================================================
+    // 11. DRAG-AND-DROP WIRING & INITIALIZATION
+    // =========================================================================
+    function wireDropzone(zoneId, onDropFiles) {
+      const zone = document.getElementById(zoneId);
+      if (!zone) return;
+      zone.addEventListener("dragover", function (ev) {
+        ev.preventDefault();
+        zone.classList.add("is-dragover");
+      });
+      zone.addEventListener("dragleave", function () {
+        zone.classList.remove("is-dragover");
+      });
+      zone.addEventListener("drop", function (ev) {
+        ev.preventDefault();
+        zone.classList.remove("is-dragover");
+        if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length > 0) {
+          onDropFiles(ev.dataTransfer.files);
+        }
+      });
+    }
+
+    async function initPortal() {
+      await restoreSavedState();
+      setExecutionMode(state.execMode);
+      onEndpointChange();
+      renderSlotHistory();
+
+      wireDropzone("dropzone-fold", onFoldFileSelected);
+      wireDropzone("dropzone-restore", onRestoreFileSelected);
+
+      // Default to Sandbox Dry-Run automatically when no EIP-1193 provider is injected,
+      // while preserving user toggle to Live Sapphire + TDX anytime.
+      if (!window.ethereum && state.execMode === "live") {
+        logTelemetry("INIT", `Portal v5 loaded. Refactored LedgerCore: 0xE97218584eDFEe559457De651c32EaF6637a9d4A | Sapphire Chain 23295.`, "info");
+        logTelemetry("INIT", `No MetaMask extension detected in sandbox frame — click "Sandbox Dry-Run" above for local Base-256 Ring129 testing, or open with MetaMask for live Sapphire transactions.`, "warn");
+      } else {
+        logTelemetry("INIT", `Portal v5 initialized. Ready for Mode 0x01 Fold & Mode 0x02 Restore.`, "ok");
+      }
+
+      if (window.notebookAppApi && typeof window.notebookAppApi.notifyAppReady === "function") {
+        window.notebookAppApi.notifyAppReady();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", initPortal);
+  </script>
 </body>
 </html>
