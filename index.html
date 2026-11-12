@@ -158,7 +158,6 @@
       <button class="btn btn-ping" onclick="pingGateway()">⚡ Ping Gateway</button>
       <button id="btnConnect" class="btn btn-secondary" onclick="connectWallet()">Connect MetaMask</button>
       <span id="walletAddr" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">Wallet not connected</span>
-      <span id="walletBal" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent);"></span>
     </div>
   </div>
 
@@ -166,7 +165,7 @@
   <div class="card">
     <h2>2. Seed &amp; Entropy Injection (Deterministic Derivation)</h2>
     <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
-      Your username and passphrase inject client-side entropy into the enclave's volatile derivation function.
+      Your username and passphrase inject client-side entropy into the enclave's volatile derivation function. 
       Plaintext data is wiped immediately upon completion and never persists on disk or in container layers.
     </p>
     <div class="grid">
@@ -239,7 +238,6 @@
   const DEFAULT_ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
   const DETERMINISTIC_SALT = "0x" + "aa".repeat(32);
   const EXT_KEY_64 = "0x" + "00".repeat(64);
-  const REQUIRED_GAS_LIMIT = 500000n; // Hardened explicit gas cap prevents premature OOG revert on Sapphire
 
   const CONTRACT_ABI = [
     "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
@@ -278,17 +276,15 @@
     log(`[*] Pinging enclave gateway at: ${base}/health...`);
     const t0 = performance.now();
     try {
-      const res = await fetch(`${base}/health`, { cache: "no-store" });
+      const res = await fetch(`${base}/health`);
       const latency = Math.round(performance.now() - t0);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.enclave_signer) {
-        enclaveSigner = ethers.getAddress(data.enclave_signer);
-      }
+      if (data.enclave_signer) enclaveSigner = data.enclave_signer;
       badge.className = "status-badge status-online";
       badge.innerText = `● Online (${latency}ms)`;
       log(`[✓] Gateway Status: OK (${latency}ms)`);
-      log(`    Enclave Signer: ${enclaveSigner}`);
+      log(`    Enclave Signer: ${data.enclave_signer}`);
       log(`    Contract:       ${data.contract}`);
     } catch (e) {
       badge.className = "status-badge status-offline";
@@ -297,7 +293,7 @@
     }
   }
 
-  // --- WALLET CONNECTION & BALANCE CHECK ---
+  // --- WALLET CONNECTION ---
   async function connectWallet() {
     if (!window.ethereum) {
       alert("MetaMask not detected. Please install MetaMask to use this portal.");
@@ -330,15 +326,7 @@
       userAddress = await signer.getAddress();
       document.getElementById("walletAddr").innerText = `${userAddress.slice(0, 8)}...${userAddress.slice(-6)}`;
       document.getElementById("btnConnect").innerText = "Connected";
-
-      const balance = await provider.getBalance(userAddress);
-      const balEth = parseFloat(ethers.formatEther(balance)).toFixed(3);
-      document.getElementById("walletBal").innerText = `(${balEth} TEST)`;
-      log(`[✓] Wallet connected: ${userAddress} | Balance: ${balEth} TEST`);
-
-      if (balance < ethers.parseEther("5.05")) {
-        log(`[⚠️] Warning: Account has ${balEth} TEST. Each session requires 5.0 TEST plus gas.`);
-      }
+      log(`[✓] Wallet connected: ${userAddress}`);
     } catch (err) {
       log(`[!] Wallet connection failed: ${err.message}`);
     }
@@ -361,31 +349,6 @@
     log(`[i] Inspected 157-byte stamp: PayloadLen = ${totalBytes.toLocaleString()} bytes (${totalBlocks.toLocaleString()} blocks).`);
   }
 
-  // --- EXTRACT REF_ID HELPER ---
-  function extractRefId(receipt) {
-    const iface = new ethers.Interface(CONTRACT_ABI);
-    for (const logItem of receipt.logs) {
-      try {
-        const parsed = iface.parseLog(logItem);
-        if (parsed && parsed.name === "RefCommitted") {
-          return parsed.args.refId;
-        }
-      } catch (_) {}
-    }
-    const refSig = ethers.id("RefCommitted(bytes32)");
-    for (const logItem of receipt.logs) {
-      if (logItem.topics && logItem.topics[0] === refSig && logItem.topics.length >= 2) {
-        return logItem.topics[1];
-      }
-    }
-    for (const logItem of receipt.logs) {
-      if (logItem.topics && logItem.topics.length >= 2 && logItem.topics[1].length === 66) {
-        return logItem.topics[1];
-      }
-    }
-    return null;
-  }
-
   // --- FOLD HANDLER ---
   async function executeFold() {
     if (!signer) await connectWallet();
@@ -405,39 +368,48 @@
 
     try {
       document.getElementById("btnFold").disabled = true;
-
-      const balance = await provider.getBalance(userAddress);
-      if (balance < ethers.parseEther("5.01")) {
-        throw new Error(`Insufficient TEST balance. Have ${ethers.formatEther(balance)} TEST, need ~5.05 TEST (5.0 call fee + gas).`);
-      }
-
       const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
+
+      // Ensure metric cap covers any uncommitted slot reservation
       const reqMetric = Math.max(file.size, 1048576);
       log(`[*] Step 1/2: Paying 5.0 TEST & opening Session A on-chain for "${file.name}" (${file.size.toLocaleString()} bytes)...`);
 
-      // EXPLICIT gasLimit prevents premature out-of-gas revert on Sapphire
+      // Hardened explicit gasLimit prevents Sapphire out-of-gas revert
       const tx = await contract.openSessionA(
         BigInt(reqMetric),
         enclaveSigner,
         2, // Mode 2: Client-locked
         DETERMINISTIC_SALT,
         EXT_KEY_64,
-        {
-          value: ethers.parseEther("5.0"),
-          gasLimit: REQUIRED_GAS_LIMIT
-        }
+        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
       );
       log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
       const receipt = await tx.wait();
 
-      if (receipt.status !== 1) {
-        throw new Error(`Transaction reverted on-chain (receipt status = 0). Gas used: ${receipt.gasUsed.toString()}`);
+      // Robust event log decoding for RefCommitted(bytes32)
+      const iface = new ethers.Interface(CONTRACT_ABI);
+      let refId = null;
+      for (const logItem of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(logItem);
+          if (parsed && parsed.name === "RefCommitted") {
+            refId = parsed.args.refId;
+            break;
+          }
+        } catch (_) {}
       }
-
-      const refId = extractRefId(receipt);
-      if (!refId) throw new Error("RefCommitted event not found in transaction receipt.");
+      if (!refId && receipt.logs.length > 0) {
+        for (const logItem of receipt.logs) {
+          if (logItem.topics && logItem.topics.length >= 2) {
+            refId = logItem.topics[1];
+            break;
+          }
+        }
+      }
+      if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
       log(`[✓] Session opened on-chain! Verified refId = ${refId}`);
 
+      // Submit payload to TEE Enclave
       log(`[*] Step 2/2: Uploading payload and entropy credentials to TEE Enclave...`);
       const formData = new FormData();
       formData.append("refId", refId);
@@ -466,6 +438,7 @@
       document.getElementById("rStart").value = "0";
       document.getElementById("rEnd").value = totalBlocks;
 
+      // Auto-download 157-byte stamp
       const downloadUrl = window.URL.createObjectURL(qBlob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -507,16 +480,10 @@
 
     try {
       document.getElementById("btnRestore").disabled = true;
-
-      const balance = await provider.getBalance(userAddress);
-      if (balance < ethers.parseEther("5.01")) {
-        throw new Error(`Insufficient TEST balance. Have ${ethers.formatEther(balance)} TEST, need ~5.05 TEST (5.0 call fee + gas).`);
-      }
-
       const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
-      log(`[*] Step 1/2: Paying 5.0 TEST & opening Reconstruct Session B for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
 
-      // EXPLICIT gasLimit prevents premature out-of-gas revert on Sapphire
+      log(`[*] Step 1/2: Paying 5.0 TEST & opening Reconstruct Session B for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
+      // Hardened explicit gasLimit prevents Sapphire out-of-gas revert
       const tx = await contract.openSessionB(
         slotId,
         BigInt(rStart),
@@ -525,23 +492,34 @@
         2,
         DETERMINISTIC_SALT,
         EXT_KEY_64,
-        {
-          value: ethers.parseEther("5.0"),
-          gasLimit: REQUIRED_GAS_LIMIT
-        }
+        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
       );
       log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
       const receipt = await tx.wait();
 
-      if (receipt.status !== 1) {
-        throw new Error(`Transaction reverted on-chain (receipt status = 0). Gas used: ${receipt.gasUsed.toString()}`);
+      const iface = new ethers.Interface(CONTRACT_ABI);
+      let refId = null;
+      for (const logItem of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(logItem);
+          if (parsed && parsed.name === "RefCommitted") {
+            refId = parsed.args.refId;
+            break;
+          }
+        } catch (_) {}
       }
+      if (!refId && receipt.logs.length > 0) {
+        for (const logItem of receipt.logs) {
+          if (logItem.topics && logItem.topics.length >= 2) {
+            refId = logItem.topics[1];
+            break;
+          }
+        }
+      }
+      if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
+      log(`[✓] Reconstruct session opened! Verified refId = ${refId}`);
 
-      const refId = extractRefId(receipt);
-      if (!refId) throw new Error("RefCommitted event not found in transaction receipt.");
-      log(`[✓] Session B opened on-chain! Verified refId = ${refId}`);
-
-      log(`[*] Step 2/2: Sending 157B stamp and credentials to TEE Enclave for reconstruction...`);
+      log(`[*] Step 2/2: Submitting 157-byte stamp and credentials to TEE Enclave...`);
       const formData = new FormData();
       formData.append("refId", refId);
       formData.append("account", userAddress);
@@ -564,8 +542,10 @@
 
       const restoredBlob = await resp.blob();
       const restoreTx = resp.headers.get("X-Restore-Tx") || "N/A";
-      const origName = resp.headers.get("X-Original-Filename") || "restored_payload.bin";
+      const origName = resp.headers.get("X-Original-Filename") || ("restored_" + qFile.name.replace(/\.Q$/i, ""));
+      const receiptHex = resp.headers.get("X-BMLT-Receipt") || resp.headers.get("X-Receipt") || "";
 
+      // Auto-download restored file
       const downloadUrl = window.URL.createObjectURL(restoredBlob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -574,8 +554,10 @@
       a.click();
       a.remove();
 
-      log(`[🏆] SUCCESS: Reconstructed bit-for-bit (${restoredBlob.size.toLocaleString()} bytes)! Saved as "${origName}".`);
-      log(`    Settlement Tx: ${restoreTx}`);
+      log(`[🏆] SUCCESS: Reconstructed ${restoredBlob.size.toLocaleString()} bytes bit-for-bit!`);
+      log(`    Saved As:     ${origName}`);
+      log(`    Settlement:   ${restoreTx}`);
+      log(`    Receipt Hash: ${receiptHex}`);
     } catch (err) {
       log(`[!] Restore Failed: ${err.message}`);
     } finally {
@@ -583,7 +565,7 @@
     }
   }
 
-  // Auto-ping gateway on page load
+  // Ping gateway automatically on initial load
   window.addEventListener("DOMContentLoaded", () => {
     pingGateway();
   });
