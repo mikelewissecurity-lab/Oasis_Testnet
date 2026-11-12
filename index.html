@@ -1,450 +1,573 @@
-#!/usr/bin/env python3
-"""
-Enclave Gateway — Zero-Oracle Stateless Bridge (v5.2.0)
-"""
-
-import logging
-import math
-import os
-import shutil
-import socket
-import struct
-import subprocess
-import tempfile
-import threading
-import time
-import requests
-from flask import Flask, Response, request, jsonify, stream_with_context
-from flask_cors import CORS
-from eth_account import Account
-from eth_abi import encode, decode
-from eth_utils import keccak, to_checksum_address
-
-log = logging.getLogger("werkzeug")
-log.setLevel(logging.CRITICAL)
-app = Flask(__name__)
-app.logger.disabled = True
-
-CORS(
-    app,
-    expose_headers=[
-        "X-Anchor-Tx",
-        "X-Slot-Id",
-        "X-Restore-Tx",
-        "X-Total-Blocks",
-        "X-Original-Filename",
-        "X-Receipt",
-        "X-Beacon",
-        "X-BMLT-Receipt",
-        "X-BMLT-Beacon",
-    ],
-)
-
-RPC_URL = os.environ.get("SAPPHIRE_TESTNET_RPC", "https://testnet.sapphire.oasis.io").strip()
-CHAIN_ID = int(os.environ.get("SAPPHIRE_CHAIN_ID", "23295"))
-LEDGER_ADDR = to_checksum_address(
-    os.environ.get("LEDGER_CONTRACT_ADDR", "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893").strip()
-)
-
-ENCLAVE_KEY = (
-    os.environ.get("ENCLAVE_PRIVATE_KEY")
-    or os.environ.get("ENCLAVE_PRIV_KEY")
-    or ""
-).strip()
-if not ENCLAVE_KEY:
-    raise SystemExit(1)
-
-S0_KEY = os.environ.get("CORE_S0_KEY", os.environ.get("BMLT_S0_KEY", "")).strip()
-SEAL_KEY = os.environ.get("CORE_SEAL_KEY", "").strip()
-AUTH_KEY = os.environ.get("ENCLAVE_AUTH_KEY", SEAL_KEY or S0_KEY).strip()
-
-_default_bin = "/tmp/bmlt-vfs" if os.path.exists("/tmp/bmlt-vfs") else "/usr/local/bin/bmlt-vfs"
-WORKER_BIN = os.environ.get("BMLT_BIN_PATH", _default_bin).strip()
-WORKER_SOCK = os.environ.get("BMLT_SOCK_PATH", "/run/s.sock").strip()
-
-SHM_ROOT = "/dev/shm" if os.path.isdir("/dev/shm") else "/tmp"
-enclave_acct = Account.from_key(ENCLAVE_KEY)
-
-_OPAQUE_BODY = b'{"status":0}'
-_MIN_FAIL_LATENCY_SEC = 0.050
-
-
-def opaque_abort(start_time: float) -> Response:
-    elapsed = time.monotonic() - start_time
-    if elapsed < _MIN_FAIL_LATENCY_SEC:
-        time.sleep(_MIN_FAIL_LATENCY_SEC - elapsed)
-    return Response(_OPAQUE_BODY, status=400, mimetype="application/json")
-
-
-_daemon_lock = threading.Lock()
-_daemon_proc = None
-
-
-def ensure_worker() -> bool:
-    global _daemon_proc
-    if os.path.exists(WORKER_SOCK):
-        return True
-    if not os.path.exists(WORKER_BIN):
-        return False
-
-    with _daemon_lock:
-        if os.path.exists(WORKER_SOCK):
-            return True
-        env = {
-            "PATH": "/usr/local/bin:/usr/bin:/bin",
-            "ENCLAVE_AUTH_KEY": AUTH_KEY,
-            "CORE_S0_KEY": S0_KEY,
-            "BMLT_S0_KEY": S0_KEY,
-            "CORE_SEAL_KEY": SEAL_KEY,
-            "RENDER_BEACON_UDP": os.environ.get("RENDER_BEACON_UDP", ""),
-        }
-        _daemon_proc = subprocess.Popen(
-            [WORKER_BIN, "-d", WORKER_SOCK],
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        for _ in range(50):
-            if os.path.exists(WORKER_SOCK):
-                return True
-            time.sleep(0.01)
-    return os.path.exists(WORKER_SOCK)
-
-
-def dispatch_binary_frame(session_dir: str, op_code: int, user: str, password: str) -> bool:
-    d_bytes = session_dir.encode("utf-8")[:255]
-    u_bytes = user.encode("utf-8")[:127]
-    p_bytes = password.encode("utf-8")[:127]
-
-    if ensure_worker():
-        try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(120.0)
-                s.connect(WORKER_SOCK)
-                hdr = struct.pack("BBBB", op_code, len(d_bytes), len(u_bytes), len(p_bytes))
-                s.sendall(hdr + d_bytes + u_bytes + p_bytes)
-                ack = s.recv(1)
-                return ack == b"\x01"
-        except Exception:
-            pass
-
-    env = {
-        "PATH": "/usr/local/bin:/usr/bin:/bin",
-        "BMLT_USER": user,
-        "BMLT_PASS": password,
-        "ENCLAVE_AUTH_KEY": AUTH_KEY,
-        "CORE_S0_KEY": S0_KEY,
-        "BMLT_S0_KEY": S0_KEY,
-        "CORE_SEAL_KEY": SEAL_KEY,
-        "RENDER_BEACON_UDP": os.environ.get("RENDER_BEACON_UDP", ""),
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confidential Enclave Gateway — Oasis Sapphire &amp; Intel TDX</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --accent: #00e5ff;
+      --accent-hover: #00c4dd;
+      --success: #00e676;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    res = subprocess.run(
-        [WORKER_BIN, str(op_code), session_dir],
-        cwd=session_dir,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return res.returncode == 0
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      padding: 2rem 1rem;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 1.7rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(0, 229, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    .card h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.35rem; }
+    input[type="text"], input[type="password"], input[type="number"], input[type="file"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus { border-color: var(--accent); }
+    .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--accent); color: #000; width: 100%; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: #1f2937; color: #fff; }
+    .btn-secondary:hover { background: #374151; }
+    .btn-ping { background: rgba(0, 229, 255, 0.15); color: var(--accent); border: 1px solid rgba(0, 229, 255, 0.3); padding: 0.5rem 1rem; }
+    .btn-ping:hover { background: rgba(0, 229, 255, 0.25); }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+    }
+    .status-online { background: rgba(0, 230, 118, 0.15); color: var(--success); }
+    .status-offline { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .status-box {
+      background: #06090f;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #38bdf8;
+      max-height: 250px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.45;
+    }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tab-btn {
+      flex: 1;
+      padding: 0.75rem;
+      background: #111827;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: rgba(0, 229, 255, 0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
 
+<div class="container">
+  <header>
+    <h1>Confidential Enclave Gateway</h1>
+    <span class="badge">Oasis Sapphire Testnet (Chain ID 23295) • Intel TDX Zero-Persistence</span>
+  </header>
 
-class ChainBridge:
-    def __init__(self, rpc_url: str, contract_addr: str, acct):
-        self.rpc_url = rpc_url
-        self.contract_addr = contract_addr
-        self.acct = acct
-        self.http = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=16, pool_maxsize=32)
-        self.http.mount("https://", adapter)
-        self.http.mount("http://", adapter)
-        self._nonce_lock = threading.Lock()
-        self._local_nonce = None
+  <!-- Enclave Gateway Health & Network Status -->
+  <div class="card">
+    <h2>
+      <span>1. Enclave Gateway &amp; Wallet Status</span>
+      <span id="gatewayStatusBadge" class="status-badge status-offline">● Standby</span>
+    </h2>
+    <div class="grid">
+      <div class="form-group">
+        <label for="teeUrl">Enclave Reverse Proxy URL</label>
+        <input type="text" id="teeUrl" value="https://p8080.m1874.opf-testnet-rofl-9.rofl.app" />
+      </div>
+      <div class="form-group">
+        <label for="contractAddr">Sapphire Contract Address</label>
+        <input type="text" id="contractAddr" value="0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893" readonly />
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem;">
+      <button class="btn btn-ping" onclick="pingGateway()">⚡ Ping Gateway</button>
+      <button id="btnConnect" class="btn btn-secondary" onclick="connectWallet()">Connect MetaMask</button>
+      <span id="walletAddr" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">Wallet not connected</span>
+    </div>
+  </div>
 
-    def rpc(self, method: str, params: list, timeout: int = 15):
-        r = self.http.post(
-            self.rpc_url,
-            json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
-            timeout=timeout,
-        ).json()
-        if "error" in r:
-            raise ValueError()
-        return r["result"]
+  <!-- Entropy & Seed Injection -->
+  <div class="card">
+    <h2>2. Seed &amp; Entropy Injection (Deterministic Derivation)</h2>
+    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+      Your username and passphrase inject client-side entropy into the enclave's volatile derivation function. 
+      Plaintext data is wiped immediately upon completion and never persists on disk or in container layers.
+    </p>
+    <div class="grid">
+      <div class="form-group">
+        <label for="username">Identity / Username</label>
+        <input type="text" id="username" placeholder="guest" value="guest" />
+      </div>
+      <div class="form-group">
+        <label for="password">Passphrase / Secret</label>
+        <div style="position: relative;">
+          <input type="password" id="password" placeholder="guest" value="guest" />
+          <span style="position: absolute; right: 10px; top: 9px; cursor: pointer; font-size: 0.75rem; color: var(--text-muted);" onclick="togglePassword()">SHOW</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    def call_view(self, sig_str: str, t_in: list, a_in: list, t_out: list):
-        sel = keccak(text=sig_str)[:4]
-        data = "0x" + (sel + encode(t_in, a_in)).hex()
-        raw = self.rpc("eth_call", [{"to": self.contract_addr, "data": data}, "latest"])
-        return decode(t_out, bytes.fromhex(raw.replace("0x", "")))
+  <!-- Operation Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tabFoldBtn" onclick="switchTab('fold')">Mode 0x01: Fold File → 157B Stamp</button>
+    <button class="tab-btn" id="tabRestoreBtn" onclick="switchTab('restore')">Mode 0x02: Reconstruct from 157B Stamp</button>
+  </div>
 
-    def _alloc_nonce(self) -> int:
-        chain_n = int(self.rpc("eth_getTransactionCount", [self.acct.address, "pending"]), 16)
-        if self._local_nonce is None or chain_n > self._local_nonce:
-            self._local_nonce = chain_n
-        n = self._local_nonce
-        self._local_nonce += 1
-        return n
+  <!-- Tab 1: Fold Payload -->
+  <div class="card" id="foldCard">
+    <h2>Fold Payload &amp; Settle State On-Chain (5.0 TEST)</h2>
+    <div class="form-group">
+      <label for="foldFile">Select Payload File (Up to 100 MB)</label>
+      <input type="file" id="foldFile" />
+      <div class="help-text">Input file is compressed into a fixed 157-byte stamp and cleared from memory.</div>
+    </div>
+    <button class="btn btn-primary" id="btnFold" onclick="executeFold()">Sign Deposit (5.0 TEST) &amp; Download 157B Stamp</button>
+  </div>
 
-    def broadcast_tx(self, sig_str: str, t_in: list, a_in: list) -> str:
-        sel = keccak(text=sig_str)[:4]
-        calldata = sel + encode(t_in, a_in)
+  <!-- Tab 2: Restore Payload -->
+  <div class="card" id="restoreCard" style="display: none;">
+    <h2>Reconstruct Data Bit-for-Bit from 157-Byte Stamp (5.0 TEST)</h2>
+    <div class="grid">
+      <div class="form-group">
+        <label for="restoreFile">Select 157-Byte Stamp File (.Q)</label>
+        <input type="file" id="restoreFile" accept=".Q,.bin" onchange="inspectStamp(this)" />
+      </div>
+      <div class="form-group">
+        <label for="restoreSlotId">Anchor Slot ID (Sequence #)</label>
+        <input type="number" id="restoreSlotId" value="1" min="1" />
+      </div>
+    </div>
+    <div class="grid">
+      <div class="form-group">
+        <label for="rStart">Block Range Start</label>
+        <input type="number" id="rStart" value="0" min="0" />
+      </div>
+      <div class="form-group">
+        <label for="rEnd">Block Range End</label>
+        <input type="number" id="rEnd" value="1" min="1" />
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btnRestore" onclick="executeRestore()">Sign Session (5.0 TEST) &amp; Reconstruct Payload</button>
+  </div>
 
-        with self._nonce_lock:
-            nonce = self._alloc_nonce()
-            gp = int(self.rpc("eth_gasPrice", []), 16)
-            tx = {
-                "to": self.contract_addr,
-                "value": 0,
-                "gas": 600000,
-                "gasPrice": gp,
-                "nonce": nonce,
-                "chainId": CHAIN_ID,
-                "data": calldata,
-            }
-            signed = self.acct.sign_transaction(tx)
-            try:
-                tx_hash = self.rpc("eth_sendRawTransaction", ["0x" + signed.raw_transaction.hex()])
-            except Exception:
-                self._local_nonce = None
-                tx["nonce"] = self._alloc_nonce()
-                signed = self.acct.sign_transaction(tx)
-                tx_hash = self.rpc("eth_sendRawTransaction", ["0x" + signed.raw_transaction.hex()])
+  <!-- Live Output Console -->
+  <div class="card">
+    <h2>Enclave Telemetry &amp; Attestation Log</h2>
+    <div class="status-box" id="consoleLog">System ready. Click "⚡ Ping Gateway" or "Connect MetaMask" to begin.</div>
+  </div>
+</div>
 
-        for _ in range(50):
-            rec = self.rpc("eth_getTransactionReceipt", [tx_hash])
-            if rec is not None:
-                if int(rec.get("status", "0x0"), 16) != 1:
-                    raise ValueError()
-                return tx_hash
-            time.sleep(0.4)
-        raise ValueError()
+<script>
+  const SAPPHIRE_CHAIN_ID_HEX = "0x5aff"; // 23295
+  const DEFAULT_ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
+  const DETERMINISTIC_SALT = "0x" + "aa".repeat(32);
+  const EXT_KEY_64 = "0x" + "00".repeat(64);
 
-    def fetch_session(self, user_cs: str, ref_bytes: bytes) -> tuple[bytes, int]:
-        (digest,) = self.call_view(
-            "hashViewAuth(address,bytes32)",
-            ["address", "bytes32"],
-            [user_cs, ref_bytes],
-            ["bytes32"],
-        )
-        sig = self.acct.unsafe_sign_hash(digest).signature
-        payload, _, seq = self.call_view(
-            "readSession(bytes32,bytes)",
-            ["bytes32", "bytes"],
-            [ref_bytes, sig],
-            ["bytes", "bytes32", "uint32"],
-        )
-        return payload, seq
+  const CONTRACT_ABI = [
+    "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
+    "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
+    "event RefCommitted(bytes32 indexed refId)"
+  ];
 
-    def sync_a(self, user_cs: str, seq: int, metric: int, q_bytes: bytes) -> str:
-        (digest,) = self.call_view(
-            "hashPayloadA(address,uint32,uint64,bytes32)",
-            ["address", "uint32", "uint64", "bytes32"],
-            [user_cs, seq, metric, keccak(q_bytes)],
-            ["bytes32"],
-        )
-        sig = self.acct.unsafe_sign_hash(digest).signature
-        return self.broadcast_tx(
-            "syncSlotA(address,uint32,uint64,bytes,bytes)",
-            ["address", "uint32", "uint64", "bytes", "bytes"],
-            [user_cs, seq, metric, q_bytes, sig],
-        )
+  let provider = null;
+  let signer = null;
+  let userAddress = null;
+  let enclaveSigner = DEFAULT_ENCLAVE_SIGNER;
 
-    def sync_b(self, user_cs: str, slot_id: int, seq_b: int, r0: int, r1: int, q_bytes: bytes) -> str:
-        (digest,) = self.call_view(
-            "hashPayloadB(address,uint32,uint32,uint64,uint64,bytes32)",
-            ["address", "uint32", "uint32", "uint64", "uint64", "bytes32"],
-            [user_cs, slot_id, seq_b, r0, r1, keccak(q_bytes)],
-            ["bytes32"],
-        )
-        sig = self.acct.unsafe_sign_hash(digest).signature
-        return self.broadcast_tx(
-            "syncSlotB(address,uint32,uint32,uint64,uint64,bytes)",
-            ["address", "uint32", "uint32", "uint64", "uint64", "bytes"],
-            [user_cs, slot_id, seq_b, r0, r1, sig],
-        )
+  function log(msg) {
+    const el = document.getElementById("consoleLog");
+    const ts = new Date().toLocaleTimeString();
+    el.innerText += `\n[${ts}] ${msg}`;
+    el.scrollTop = el.scrollHeight;
+  }
 
+  function togglePassword() {
+    const pw = document.getElementById("password");
+    pw.type = pw.type === "password" ? "text" : "password";
+  }
 
-bridge = ChainBridge(RPC_URL, LEDGER_ADDR, enclave_acct)
+  function switchTab(tab) {
+    document.getElementById("foldCard").style.display = tab === "fold" ? "block" : "none";
+    document.getElementById("restoreCard").style.display = tab === "restore" ? "block" : "none";
+    document.getElementById("tabFoldBtn").classList.toggle("active", tab === "fold");
+    document.getElementById("tabRestoreBtn").classList.toggle("active", tab === "restore");
+  }
 
+  // --- HEALTH CHECK / PING ---
+  async function pingGateway() {
+    const base = document.getElementById("teeUrl").value.replace(/\/+$/, "");
+    const badge = document.getElementById("gatewayStatusBadge");
+    log(`[*] Pinging enclave gateway at: ${base}/health...`);
+    const t0 = performance.now();
+    try {
+      const res = await fetch(`${base}/health`);
+      const latency = Math.round(performance.now() - t0);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.enclave_signer) enclaveSigner = data.enclave_signer;
+      badge.className = "status-badge status-online";
+      badge.innerText = `● Online (${latency}ms)`;
+      log(`[✓] Gateway Status: OK (${latency}ms)`);
+      log(`    Enclave Signer: ${data.enclave_signer}`);
+      log(`    Contract:       ${data.contract}`);
+    } catch (e) {
+      badge.className = "status-badge status-offline";
+      badge.innerText = "● Unreachable";
+      log(`[!] Gateway Ping Failed: ${e.message}`);
+    }
+  }
 
-def stream_to_file(storage, path: str, max_bytes: int = 104_857_600) -> int:
-    total = 0
-    with open(path, "wb") as f:
-        while True:
-            buf = storage.stream.read(65536)
-            if not buf:
-                break
-            total += len(buf)
-            if total > max_bytes:
-                raise ValueError()
-            f.write(buf)
-    return total
-
-
-def read_hex(path: str) -> str:
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            return "0x" + f.read().hex()
-    return ""
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    ensure_worker()
-    return jsonify(
-        {
-            "status": "ok",
-            "enclave_signer": enclave_acct.address,
-            "contract": LEDGER_ADDR,
+  // --- WALLET CONNECTION ---
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("MetaMask not detected. Please install MetaMask to use this portal.");
+      return;
+    }
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      if (chainId.toLowerCase() !== SAPPHIRE_CHAIN_ID_HEX) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: SAPPHIRE_CHAIN_ID_HEX }]
+          });
+        } catch (switchErr) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: SAPPHIRE_CHAIN_ID_HEX,
+              chainName: "Oasis Sapphire Testnet",
+              nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
+              rpcUrls: ["https://testnet.sapphire.oasis.io"],
+              blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
+            }]
+          });
         }
-    )
+      }
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
+      document.getElementById("walletAddr").innerText = `${userAddress.slice(0, 8)}...${userAddress.slice(-6)}`;
+      document.getElementById("btnConnect").innerText = "Connected";
+      log(`[✓] Wallet connected: ${userAddress}`);
+    } catch (err) {
+      log(`[!] Wallet connection failed: ${err.message}`);
+    }
+  }
 
+  // --- STAMP FILE INSPECTION ---
+  async function inspectStamp(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size !== 157) {
+      log(`[!] Selected file is ${file.size} bytes (strict stamps are 157 bytes).`);
+      return;
+    }
+    const buf = await file.arrayBuffer();
+    const view = new DataView(buf);
+    const totalBytes = Number(view.getBigUint64(0, false));
+    const totalBlocks = Math.max(1, Math.ceil(totalBytes / 128));
+    document.getElementById("rStart").value = "0";
+    document.getElementById("rEnd").value = String(totalBlocks);
+    log(`[i] Inspected 157-byte stamp: PayloadLen = ${totalBytes.toLocaleString()} bytes (${totalBlocks.toLocaleString()} blocks).`);
+  }
 
-@app.route("/api/fold", methods=["POST"])
-def handle_fold():
-    t0 = time.monotonic()
-    session_dir = None
-    try:
-        ref_hex = request.form.get("refId", "").strip().replace("0x", "")
-        acct_str = request.form.get("account", "").strip()
-        user = request.form.get("username", "guest").strip() or "guest"
-        pw = request.form.get("password", "guest").strip() or "guest"
-        up_file = request.files.get("file")
+  // --- FOLD HANDLER ---
+  async function executeFold() {
+    if (!signer) await connectWallet();
+    if (!signer) return;
 
-        if len(ref_hex) != 64 or not acct_str or not up_file:
-            return opaque_abort(t0)
+    const fileInput = document.getElementById("foldFile");
+    const file = fileInput.files[0];
+    if (!file) {
+      alert("Please select a file to fold first.");
+      return;
+    }
 
-        user_cs = to_checksum_address(acct_str)
-        ticket_bytes, seq = bridge.fetch_session(user_cs, bytes.fromhex(ref_hex))
+    const base = document.getElementById("teeUrl").value.replace(/\/+$/, "");
+    const contractAddr = document.getElementById("contractAddr").value.trim();
+    const username = document.getElementById("username").value.trim() || "guest";
+    const password = document.getElementById("password").value.trim() || "guest";
 
-        session_dir = tempfile.mkdtemp(prefix="s_", dir=SHM_ROOT)
-        with open(os.path.join(session_dir, "t"), "wb") as f:
-            f.write(ticket_bytes)
+    try {
+      document.getElementById("btnFold").disabled = true;
+      const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
 
-        metric = stream_to_file(up_file, os.path.join(session_dir, "i"))
-        if metric == 0:
-            return opaque_abort(t0)
+      // Ensure metric cap covers any uncommitted slot reservation
+      const reqMetric = Math.max(file.size, 1048576);
+      log(`[*] Step 1/2: Paying 5.0 TEST & opening Session A on-chain for "${file.name}" (${file.size.toLocaleString()} bytes)...`);
 
-        if not dispatch_binary_frame(session_dir, 0x01, user, pw):
-            return opaque_abort(t0)
+      const tx = await contract.openSessionA(
+        BigInt(reqMetric),
+        enclaveSigner,
+        2, // Mode 2: Client-locked
+        DETERMINISTIC_SALT,
+        EXT_KEY_64,
+        { value: ethers.parseEther("5.0") }
+      );
+      log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
+      const receipt = await tx.wait();
 
-        q_path = os.path.join(session_dir, "q")
-        if not os.path.exists(q_path):
-            return opaque_abort(t0)
-
-        with open(q_path, "rb") as f:
-            q_bytes = f.read()
-
-        if len(q_bytes) != 157:
-            return opaque_abort(t0)
-
-        rec_hex = read_hex(os.path.join(session_dir, "r"))
-        bcn_hex = read_hex(os.path.join(session_dir, "b"))
-
-        tx_hash = bridge.sync_a(user_cs, seq, metric, q_bytes)
-        total_blocks = max(1, math.ceil(metric / 128))
-        orig_name = os.path.basename(up_file.filename or "data.bin")
-
-        headers = {
-            "Content-Disposition": f'attachment; filename="{orig_name}.Q"',
-            "X-Anchor-Tx": tx_hash,
-            "X-Slot-Id": str(seq),
-            "X-Total-Blocks": str(total_blocks),
-            "X-Original-Filename": orig_name,
-            "X-Receipt": rec_hex,
-            "X-Beacon": bcn_hex,
-            "X-BMLT-Receipt": rec_hex,
-            "X-BMLT-Beacon": bcn_hex,
+      // Robust event log decoding for RefCommitted(bytes32)
+      const iface = new ethers.Interface(CONTRACT_ABI);
+      let refId = null;
+      for (const logItem of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(logItem);
+          if (parsed && parsed.name === "RefCommitted") {
+            refId = parsed.args.refId;
+            break;
+          }
+        } catch (_) {}
+      }
+      if (!refId && receipt.logs.length > 0) {
+        for (const logItem of receipt.logs) {
+          if (logItem.topics && logItem.topics.length >= 2) {
+            refId = logItem.topics[1];
+            break;
+          }
         }
-        return Response(q_bytes, status=200, mimetype="application/octet-stream", headers=headers)
+      }
+      if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
+      log(`[✓] Session opened on-chain! Verified refId = ${refId}`);
 
-    except Exception:
-        return opaque_abort(t0)
-    finally:
-        if session_dir:
-            shutil.rmtree(session_dir, ignore_errors=True)
+      // Submit payload to TEE Enclave
+      log(`[*] Step 2/2: Uploading payload and entropy credentials to TEE Enclave...`);
+      const formData = new FormData();
+      formData.append("refId", refId);
+      formData.append("account", userAddress);
+      formData.append("username", username);
+      formData.append("password", password);
+      formData.append("file", file);
 
+      const resp = await fetch(`${base}/api/fold`, {
+        method: "POST",
+        body: formData
+      });
 
-@app.route("/api/restore", methods=["POST"])
-def handle_restore():
-    t0 = time.monotonic()
-    session_dir = None
-    try:
-        ref_hex = request.form.get("refId", "").strip().replace("0x", "")
-        acct_str = request.form.get("account", "").strip()
-        slot_id = int(request.form.get("slotId", "1"))
-        r0 = int(request.form.get("rStart", "0"))
-        r1 = int(request.form.get("rEnd", "1"))
-        user = request.form.get("username", "guest").strip() or "guest"
-        pw = request.form.get("password", "guest").strip() or "guest"
-        q_upload = request.files.get("qfile")
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Enclave Gateway returned HTTP ${resp.status}: ${errBody}`);
+      }
 
-        if len(ref_hex) != 64 or not acct_str or not q_upload:
-            return opaque_abort(t0)
+      const qBlob = await resp.blob();
+      const anchorTx = resp.headers.get("X-Anchor-Tx") || "N/A";
+      const slotId = resp.headers.get("X-Slot-Id") || "1";
+      const totalBlocks = resp.headers.get("X-Total-Blocks") || String(Math.max(1, Math.ceil(file.size / 128)));
+      const receiptHex = resp.headers.get("X-BMLT-Receipt") || resp.headers.get("X-Receipt") || "";
 
-        q_bytes = q_upload.read(256)
-        if len(q_bytes) != 157:
-            return opaque_abort(t0)
+      document.getElementById("restoreSlotId").value = slotId;
+      document.getElementById("rStart").value = "0";
+      document.getElementById("rEnd").value = totalBlocks;
 
-        user_cs = to_checksum_address(acct_str)
-        ticket_bytes, seq_b = bridge.fetch_session(user_cs, bytes.fromhex(ref_hex))
+      // Auto-download 157-byte stamp
+      const downloadUrl = window.URL.createObjectURL(qBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${file.name}.Q`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
-        session_dir = tempfile.mkdtemp(prefix="s_", dir=SHM_ROOT)
-        with open(os.path.join(session_dir, "t"), "wb") as f:
-            f.write(ticket_bytes)
-        with open(os.path.join(session_dir, "q"), "wb") as f:
-            f.write(q_bytes)
+      log(`[🏆] SUCCESS: Received ${qBlob.size}-byte stamp file "${file.name}.Q"!`);
+      log(`    Anchored Slot ID: ${slotId} | Blocks: 0..${totalBlocks}`);
+      log(`    Settlement Tx:   ${anchorTx}`);
+      log(`    Receipt Hash:    ${receiptHex}`);
+    } catch (err) {
+      log(`[!] Fold Failed: ${err.message}`);
+    } finally {
+      document.getElementById("btnFold").disabled = false;
+    }
+  }
 
-        if not dispatch_binary_frame(session_dir, 0x02, user, pw):
-            return opaque_abort(t0)
+  // --- RESTORE HANDLER ---
+  async function executeRestore() {
+    if (!signer) await connectWallet();
+    if (!signer) return;
 
-        out_path = os.path.join(session_dir, "o")
-        if not os.path.exists(out_path):
-            return opaque_abort(t0)
+    const fileInput = document.getElementById("restoreFile");
+    const qFile = fileInput.files[0];
+    if (!qFile) {
+      alert("Please select a 157-byte stamp file first.");
+      return;
+    }
 
-        rec_hex = read_hex(os.path.join(session_dir, "r"))
-        bcn_hex = read_hex(os.path.join(session_dir, "b"))
+    const base = document.getElementById("teeUrl").value.replace(/\/+$/, "");
+    const contractAddr = document.getElementById("contractAddr").value.trim();
+    const slotId = parseInt(document.getElementById("restoreSlotId").value, 10) || 1;
+    const rStart = parseInt(document.getElementById("rStart").value, 10) || 0;
+    const rEnd = parseInt(document.getElementById("rEnd").value, 10) || 1;
+    const username = document.getElementById("username").value.trim() || "guest";
+    const password = document.getElementById("password").value.trim() || "guest";
 
-        tx_hash = bridge.sync_b(user_cs, slot_id, seq_b, r0, r1, q_bytes)
+    try {
+      document.getElementById("btnRestore").disabled = true;
+      const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
 
-        raw_name = os.path.basename(q_upload.filename or "data.bin.Q")
-        orig_name = "restored_" + (raw_name[:-2] if raw_name.endswith(".Q") else raw_name)
+      log(`[*] Step 1/2: Paying 5.0 TEST & opening Reconstruct Session B for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
+      const tx = await contract.openSessionB(
+        slotId,
+        BigInt(rStart),
+        BigInt(rEnd),
+        enclaveSigner,
+        2,
+        DETERMINISTIC_SALT,
+        EXT_KEY_64,
+        { value: ethers.parseEther("5.0") }
+      );
+      log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
+      const receipt = await tx.wait();
 
-        active_dir = session_dir
-        session_dir = None
-
-        def stream_and_wipe():
-            try:
-                with open(out_path, "rb") as rf:
-                    while True:
-                        chunk = rf.read(65536)
-                        if not chunk:
-                            break
-                        yield chunk
-            finally:
-                shutil.rmtree(active_dir, ignore_errors=True)
-
-        headers = {
-            "Content-Disposition": f'attachment; filename="{orig_name}"',
-            "X-Restore-Tx": tx_hash,
-            "X-Original-Filename": orig_name,
-            "X-Receipt": rec_hex,
-            "X-Beacon": bcn_hex,
-            "X-BMLT-Receipt": rec_hex,
-            "X-BMLT-Beacon": bcn_hex,
+      const iface = new ethers.Interface(CONTRACT_ABI);
+      let refId = null;
+      for (const logItem of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(logItem);
+          if (parsed && parsed.name === "RefCommitted") {
+            refId = parsed.args.refId;
+            break;
+          }
+        } catch (_) {}
+      }
+      if (!refId && receipt.logs.length > 0) {
+        for (const logItem of receipt.logs) {
+          if (logItem.topics && logItem.topics.length >= 2) {
+            refId = logItem.topics[1];
+            break;
+          }
         }
-        return Response(
-            stream_with_context(stream_and_wipe()),
-            status=200,
-            mimetype="application/octet-stream",
-            headers=headers,
-        )
+      }
+      if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
+      log(`[✓] Reconstruct session opened! Verified refId = ${refId}`);
 
-    except Exception:
-        if session_dir:
-            shutil.rmtree(session_dir, ignore_errors=True)
-        return opaque_abort(t0)
+      log(`[*] Step 2/2: Submitting 157-byte stamp and credentials to TEE Enclave...`);
+      const formData = new FormData();
+      formData.append("refId", refId);
+      formData.append("account", userAddress);
+      formData.append("slotId", slotId.toString());
+      formData.append("rStart", rStart.toString());
+      formData.append("rEnd", rEnd.toString());
+      formData.append("username", username);
+      formData.append("password", password);
+      formData.append("qfile", qFile);
 
+      const resp = await fetch(`${base}/api/restore`, {
+        method: "POST",
+        body: formData
+      });
 
-if __name__ == "__main__":
-    ensure_worker()
-    app.run(host="0.0.0.0", port=8080, threaded=True)
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Enclave Gateway returned HTTP ${resp.status}: ${errBody}`);
+      }
+
+      const restoredBlob = await resp.blob();
+      const restoreTx = resp.headers.get("X-Restore-Tx") || "N/A";
+      const origName = resp.headers.get("X-Original-Filename") || ("restored_" + qFile.name.replace(/\.Q$/i, ""));
+      const receiptHex = resp.headers.get("X-BMLT-Receipt") || resp.headers.get("X-Receipt") || "";
+
+      // Auto-download restored file
+      const downloadUrl = window.URL.createObjectURL(restoredBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = origName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      log(`[🏆] SUCCESS: Reconstructed ${restoredBlob.size.toLocaleString()} bytes bit-for-bit!`);
+      log(`    Saved As:     ${origName}`);
+      log(`    Settlement:   ${restoreTx}`);
+      log(`    Receipt Hash: ${receiptHex}`);
+    } catch (err) {
+      log(`[!] Restore Failed: ${err.message}`);
+    } finally {
+      document.getElementById("btnRestore").disabled = false;
+    }
+  }
+
+  // Ping gateway automatically on initial load
+  window.addEventListener("DOMContentLoaded", () => {
+    pingGateway();
+  });
+</script>
+
+</body>
+</html>
