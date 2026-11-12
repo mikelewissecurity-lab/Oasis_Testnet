@@ -1,429 +1,1162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data Seal</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="artifact-type" content="tool">
+  <meta name="design-style" content="aurora">
+  <title>Sealed File Vault</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090a0f;
-      --panel: #11131a;
-      --border: #1e2230;
-      --accent: #22d3ee;
-      --accent-hover: #06b6d4;
-      --text: #f8fafc;
-      --muted: #64748b;
-      --success: #10b981;
-      --danger: #ef4444;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color-scheme: dark;
+
+      /* Page and surfaces: deep oceanic slate steps */
+      --background: #0c1214;
+      --surface-container-low: #111a1e;
+      --surface-container: #152024;
+      --surface-container-high: #1c2a30;
+
+      /* Text */
+      --on-surface: #edf3f5;
+      --on-surface-variant: #94a8b0;
+
+      /* Borders */
+      --outline: #38515c;
+      --outline-variant: #213138;
+
+      /* Accents */
+      --primary: #63c7d6;
+      --on-primary: #081214;
+      --primary-container: #163840;
+      --on-primary-container: #c7f0f7;
+      --secondary: #5d7882;
+      --tertiary: #87d69b;
+      --error: #f27474;
+      --on-error: #1a0606;
+
+      /* Data series */
+      --data-1: #63c7d6;
+      --data-2: #87d69b;
+      --data-3: #e8b954;
+      --data-4: #f08c70;
+      --data-context: #415861;
+
+      /* Fonts */
+      --font-headline: 'Instrument Sans', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-label: 'Geist Mono', monospace;
+
+      /* Shape */
+      --rounded: 0.5rem;
+      --rounded-lg: 0.75rem;
+      --rounded-full: 9999px;
+
+      /* Style effects */
+      --hairline: 1px solid var(--outline-variant);
+      --hairline-strong: 1px solid var(--outline);
+      --panel-gradient: linear-gradient(180deg, #162226 0%, #111a1e 100%);
+      --heading-tracking: -0.025em;
+      --label-tracking: 0.06em;
+      --sage-tint: color-mix(in srgb, var(--tertiary) 13%, transparent);
+      --cyan-tint: color-mix(in srgb, var(--primary) 13%, transparent);
+      --error-tint: color-mix(in srgb, var(--error) 13%, transparent);
+      --amber-tint: color-mix(in srgb, var(--data-3) 13%, transparent);
+
+      /* Semantic */
+      --positive: var(--tertiary);
+      --warning: var(--data-3);
+      --focus: var(--primary);
+
+      /* Type scale (tool) */
+      --display-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+      --headline-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+      --subhead-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+      --body-size: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+      --label-size: 0.75rem;
+
+      /* Spacing scale */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.5rem;
+      --space-2xl: 4rem;
+
+      /* Motion */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --dur-micro: 120ms;
+      --dur-short: 220ms;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { overflow-x: clip; margin: 0; padding: 0; }
+    header { position: static !important; }
+
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 2.5rem 1rem;
-      max-width: 680px;
+      background: var(--background);
+      color: var(--on-surface);
+      font-family: var(--font-body);
+      font-size: var(--body-size);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .page-grid {
+      display: grid;
+      gap: var(--space-lg);
+      padding: var(--space-xl) var(--space-lg);
+      max-width: 960px;
       margin: 0 auto;
+      overflow: hidden;
     }
-    header { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.35rem; }
-    header p { color: var(--muted); font-size: 0.85rem; }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
-    }
-    .status-row {
+    .page-grid * { min-width: 0; }
+
+    .top-bar {
       display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
+      gap: var(--space-md);
+      padding-bottom: var(--space-lg);
+      border-bottom: var(--hairline);
     }
-    .badge {
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    h1.title {
+      margin: 0;
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--display-size);
+      letter-spacing: var(--heading-tracking);
+      line-height: 1.1;
+      color: var(--on-surface);
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--on-surface-variant);
+      font-size: var(--body-size);
+      max-width: 54ch;
+    }
+
+    .controls-cluster {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.2rem 0.6rem;
-      border-radius: 9999px;
-      background: rgba(16, 185, 129, 0.1);
-      color: var(--success);
+      gap: var(--space-sm);
+      padding: var(--space-xs) var(--space-sm);
+      min-height: 36px;
+      border-radius: var(--rounded);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      background: var(--surface-container);
+      border: var(--hairline);
+      color: var(--on-surface-variant);
+      transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out);
     }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
-    .tab-btn {
-      flex: 1;
-      padding: 0.75rem;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      color: var(--muted);
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 0.9rem;
-      transition: all 0.15s;
+
+    .status-badge.is-ready {
+      background: var(--sage-tint);
+      color: var(--tertiary);
+      border-color: color-mix(in srgb, var(--tertiary) 35%, transparent);
     }
-    .tab-btn.active {
-      background: rgba(34, 211, 238, 0.08);
-      border-color: var(--accent);
-      color: var(--accent);
+
+    .status-badge.is-offline {
+      background: var(--error-tint);
+      color: var(--error);
+      border-color: color-mix(in srgb, var(--error) 35%, transparent);
     }
-    .form-group { margin-bottom: 1.25rem; }
-    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; font-weight: 500; }
-    input[type="file"], input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 0.75rem;
-      background: #050608;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      color: var(--text);
-      font-size: 0.88rem;
-      outline: none;
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: var(--rounded-full);
+      background: currentColor;
+      flex-shrink: 0;
     }
-    input:focus { border-color: var(--accent); }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .btn {
-      width: 100%;
-      padding: 0.85rem;
-      border-radius: 0.5rem;
-      font-size: 0.92rem;
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-lg);
+      align-items: start;
+    }
+
+    .panel-wrapper {
+      container-type: inline-size;
+    }
+
+    .panel {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-family: var(--font-headline);
       font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s;
+      font-size: var(--headline-size);
+      letter-spacing: var(--heading-tracking);
+      line-height: 1.15;
+      color: var(--on-surface);
     }
-    .btn-primary { background: var(--accent); color: #000; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .fee-tag {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .field-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 500;
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+    }
+
+    .well {
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      transition: background-color var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out);
+    }
+
+    .well.is-dragover {
+      background: var(--surface-container-low);
+      box-shadow: 0 0 0 2px var(--primary);
+    }
+
+    .file-trigger {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      min-height: 44px;
+      cursor: pointer;
+    }
+
+    .file-input-hidden {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .file-name {
+      font-size: var(--body-size);
+      color: var(--on-surface);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-name.is-empty {
+      color: var(--on-surface-variant);
+    }
+
+    .file-meta {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .browse-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: var(--space-xs) var(--space-sm);
+      border-radius: var(--rounded);
+      background: var(--surface-container);
+      border: var(--hairline-strong);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface);
+      flex-shrink: 0;
+    }
+
+    .row-pair {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+      align-items: end;
+    }
+
+    @container (min-width: 340px) {
+      .row-pair.has-slot {
+        grid-template-columns: 112px minmax(0, 1fr);
+      }
+    }
+
+    .number-input {
+      width: 100%;
+      min-height: 44px;
+      padding: var(--space-sm) var(--space-md);
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      color: var(--on-surface);
+      font-family: var(--font-label);
+      font-size: var(--body-size);
+      font-variant-numeric: tabular-nums;
+      transition: background-color var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out);
+    }
+
+    .number-input:hover {
+      background: var(--surface-container-low);
+    }
+
+    .number-input:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    button {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--body-size);
+      min-height: 44px;
+      padding: var(--space-sm) var(--space-lg);
+      border-radius: var(--rounded);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      border: 1px solid transparent;
+      transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out), opacity var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+    }
+
+    button:focus-visible,
+    .file-input-hidden:focus-visible + .file-trigger-ui {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--on-primary-container);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
     .btn-secondary {
       background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.45rem 0.9rem;
-      font-size: 0.8rem;
-      width: auto;
+      color: var(--on-surface);
+      border: var(--hairline-strong);
+      padding: var(--space-xs) var(--space-md);
     }
-    .btn-secondary:hover { border-color: var(--muted); }
-    .log-box {
-      background: #050608;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      padding: 0.85rem;
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      color: #94a3b8;
-      height: 120px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--surface-container-high);
+    }
+
+    .btn-secondary.is-connected {
+      border-color: color-mix(in srgb, var(--tertiary) 45%, transparent);
+      color: var(--tertiary);
+    }
+
+    button:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    .inline-msg {
+      min-height: 1.5rem;
+      font-size: var(--label-size);
+      font-family: var(--font-label);
+      color: var(--on-surface-variant);
+      border-radius: var(--rounded);
+      padding: 0;
+      word-break: break-word;
+    }
+
+    .inline-msg.is-active {
+      padding: var(--space-sm) var(--space-md);
+      background: var(--cyan-tint);
+      color: var(--on-primary-container);
+      border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+
+    .inline-msg.is-success {
+      padding: var(--space-sm) var(--space-md);
+      background: var(--sage-tint);
+      color: var(--tertiary);
+      border: 1px solid color-mix(in srgb, var(--tertiary) 35%, transparent);
+    }
+
+    .inline-msg.is-error {
+      padding: var(--space-sm) var(--space-md);
+      background: var(--error-tint);
+      color: var(--error);
+      border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
+    }
+
+    @media (max-width: 640px) {
+      .page-grid {
+        padding: var(--space-md);
+        gap: var(--space-md);
+      }
+      .tool-grid {
+        grid-template-columns: 1fr;
+      }
+      .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
 <body>
+  <main class="page-grid">
+    <header class="top-bar">
+      <div class="title-group">
+        <h1 class="title">Sealed File Vault</h1>
+        <p class="subtitle">Seal any file to a compact stamp, or restore it bit-for-bit.</p>
+      </div>
+      <div class="controls-cluster">
+        <span id="service-badge" class="status-badge" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="service-badge-text">Checking</span>
+        </span>
+        <button id="wallet-btn" type="button" class="btn-secondary" onclick="connectWallet()">
+          Connect Wallet
+        </button>
+      </div>
+    </header>
 
-<header>
-  <h1>Data Seal</h1>
-  <p>Secure Seal &amp; Retrieval</p>
-</header>
+    <section class="tool-grid" aria-label="Vault operations">
+      <div class="panel-wrapper">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">1. Store</h2>
+            <span class="fee-tag">5.0 TEST Deposit</span>
+          </div>
 
-<div class="card">
-  <div class="status-row">
-    <div style="display: flex; align-items: center; gap: 0.5rem;">
-      <button class="btn btn-secondary" id="btnConnect" onclick="connectWallet()">Connect Wallet</button>
-      <span id="walletText" style="font-size: 0.8rem; color: var(--muted); font-family: var(--font-mono);">Not connected</span>
-    </div>
-    <span class="badge" id="netStatus">Ready</span>
-  </div>
+          <div class="field-group">
+            <label class="field-label" for="store-file">File to seal</label>
+            <div id="store-well" class="well">
+              <div class="file-trigger">
+                <input
+                  id="store-file"
+                  class="file-input-hidden"
+                  type="file"
+                  onchange="onStoreFileChange(this)"
+                >
+                <span id="store-file-name" class="file-name is-empty">Select or drop any file…</span>
+                <span class="browse-chip">Browse</span>
+              </div>
+              <span id="store-file-meta" class="file-meta">Up to 100 MB</span>
+            </div>
+          </div>
 
-  <div class="grid" style="margin-top: 0.75rem;">
-    <div class="form-group" style="margin-bottom: 0;">
-      <label>Identifier</label>
-      <input type="text" id="uid" value="guest" />
-    </div>
-    <div class="form-group" style="margin-bottom: 0;">
-      <label>Key</label>
-      <input type="password" id="ukey" value="guest" />
-    </div>
-  </div>
-</div>
+          <button id="store-btn" type="button" class="btn-primary" onclick="handleStore()">
+            Seal &amp; Download .Q
+          </button>
 
-<div class="tabs">
-  <button class="tab-btn active" id="tabSealBtn" onclick="setTab('seal')">Seal</button>
-  <button class="tab-btn" id="tabOpenBtn" onclick="setTab('open')">Retrieve</button>
-</div>
+          <div id="store-msg" class="inline-msg" aria-live="polite"></div>
+        </div>
+      </div>
 
-<!-- Tab 1: Seal -->
-<div class="card" id="sealCard">
-  <div class="form-group">
-    <label>Select File</label>
-    <input type="file" id="fileIn" />
-  </div>
-  <button class="btn btn-primary" id="btnSeal" onclick="executeSeal()">Seal File</button>
-</div>
+      <div class="panel-wrapper">
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">2. Retrieve</h2>
+            <span class="fee-tag">5.0 TEST Deposit</span>
+          </div>
 
-<!-- Tab 2: Retrieve -->
-<div class="card" id="openCard" style="display: none;">
-  <div class="form-group">
-    <label>Select Stamp (.Q)</label>
-    <input type="file" id="stampIn" accept=".Q" onchange="parseStamp(this)" />
-  </div>
-  <input type="hidden" id="slotNum" value="1" />
-  <input type="hidden" id="blockCount" value="1" />
-  <button class="btn btn-primary" id="btnOpen" onclick="executeRetrieve()">Retrieve File</button>
-</div>
+          <div class="field-group">
+            <label class="field-label" for="restore-file">Stamp file (.Q)</label>
+            <div id="restore-well" class="well">
+              <div class="file-trigger">
+                <input
+                  id="restore-file"
+                  class="file-input-hidden"
+                  type="file"
+                  accept=".Q,.q"
+                  onchange="onRestoreFileChange(this)"
+                >
+                <span id="restore-file-name" class="file-name is-empty">Select or drop .Q stamp…</span>
+                <span class="browse-chip">Browse</span>
+              </div>
+              <span id="restore-file-meta" class="file-meta">157-byte stamp required</span>
+            </div>
+          </div>
 
-<div class="card">
-  <label>Status</label>
-  <div class="log-box" id="logBox">System ready.</div>
-</div>
+          <div class="row-pair has-slot">
+            <div class="field-group">
+              <label class="field-label" for="slot-id">Slot ID</label>
+              <input
+                id="slot-id"
+                class="number-input"
+                type="number"
+                value="1"
+                min="1"
+                step="1"
+                onchange="onSlotIdChange(this)"
+              >
+            </div>
+            <button id="restore-btn" type="button" class="btn-primary" onclick="handleRestore()">
+              Restore File
+            </button>
+          </div>
 
-<script>
-  const GATEWAY = "https://p8080.m1874.opf-testnet-rofl-9.rofl.app";
-  const CONTRACT_ADDR = "0xE97218584eDFEe559457De651c32EaF6637a9d4A";
-  const CHAIN_HEX = "0x5aff"; // 23295
-  const SIGNER_ADDR = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
-  const SALT = "0x" + "aa".repeat(32);
-  const EXT_KEY = "0x" + "00".repeat(64);
+          <div id="restore-msg" class="inline-msg" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-  const ABI = [
-    "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-    "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-    "event RefCommitted(bytes32 indexed refId)"
-  ];
+  <api-shim></api-shim>
+  <script>
+    const CONTRACT_ADDRESS = '0xE97218584eDFEe559457De651c32EaF6637a9d4A';
+    const GATEWAY_ORIGIN = 'https://p8080.m1874.opf-testnet-rofl-9.rofl.app';
+    const CHAIN_ID_HEX = '0x5aff';
+    const CHAIN_RPC_URL = 'https://testnet.sapphire.oasis.io';
+    const CHAIN_EXPLORER_URL = 'https://explorer.oasis.io/testnet/sapphire';
+    const DEPOSIT_WEI_HEX = '0x4563918244f40000';
+    const DEFAULT_NODE_ADDRESS = '0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18';
+    const SESSION_SALT = '0x' + 'aa'.repeat(32);
+    const MAX_FILE_BYTES = 100000000;
+    const STAMP_BYTE_LEN = 157;
 
-  let provider = null;
-  let signer = null;
-  let account = null;
+    let walletAddress = null;
+    let serviceNodeAddress = DEFAULT_NODE_ADDRESS;
+    let restoredByteCount = 1;
+    let restoredBlockCount = 1;
+    let isBusy = false;
 
-  function print(msg) {
-    const el = document.getElementById("logBox");
-    el.innerText += `\n${msg}`;
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function setTab(tab) {
-    document.getElementById("sealCard").style.display = tab === "seal" ? "block" : "none";
-    document.getElementById("openCard").style.display = tab === "open" ? "block" : "none";
-    document.getElementById("tabSealBtn").classList.toggle("active", tab === "seal");
-    document.getElementById("tabOpenBtn").classList.toggle("active", tab === "open");
-  }
-
-  async function connectWallet() {
-    if (!window.ethereum) {
-      alert("Please install a Web3 wallet.");
-      return;
+    function utf8ToBytes(str) {
+      return new TextEncoder().encode(str);
     }
-    try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const cid = await window.ethereum.request({ method: "eth_chainId" });
-      if (cid.toLowerCase() !== CHAIN_HEX) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: CHAIN_HEX }]
-          });
-        } catch (_) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: CHAIN_HEX,
-              chainName: "Sapphire Testnet",
-              nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-              rpcUrls: ["https://testnet.sapphire.oasis.io"],
-              blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-            }]
-          });
+
+    function keccak256Hex(inputBytes) {
+      const rate = 136;
+      const paddedLen = Math.ceil((inputBytes.length + 1) / rate) * rate;
+      const padded = new Uint8Array(paddedLen);
+      padded.set(inputBytes);
+      padded[inputBytes.length] = 0x01;
+      padded[paddedLen - 1] |= 0x80;
+
+      const rc = [];
+      let lfsr = 0x01;
+      for (let r = 0; r < 24; r++) {
+        let c = 0n;
+        for (let j = 0; j < 7; j++) {
+          if (lfsr & 1) c |= 1n << BigInt((1 << j) - 1);
+          lfsr = ((lfsr << 1) ^ ((lfsr & 0x80) ? 0x71 : 0)) & 0xff;
+        }
+        rc.push(c);
+      }
+
+      const rho = new Array(25).fill(0);
+      let rx = 1;
+      let ry = 0;
+      for (let t = 0; t < 24; t++) {
+        rho[rx + 5 * ry] = (((t + 1) * (t + 2)) / 2) % 64;
+        const nx = ry;
+        const ny = (2 * rx + 3 * ry) % 5;
+        rx = nx;
+        ry = ny;
+      }
+
+      const mask64 = 0xffffffffffffffffn;
+      function rotl64(x, n) {
+        if (n === 0) return x;
+        const bn = BigInt(n);
+        return ((x << bn) | (x >> (64n - bn))) & mask64;
+      }
+
+      const state = new Array(25).fill(0n);
+      for (let off = 0; off < paddedLen; off += rate) {
+        for (let i = 0; i < 17; i++) {
+          let lane = 0n;
+          const base = off + i * 8;
+          for (let b = 0; b < 8; b++) {
+            lane |= BigInt(padded[base + b]) << BigInt(b * 8);
+          }
+          state[i] ^= lane;
+        }
+
+        for (let round = 0; round < 24; round++) {
+          const col = new Array(5).fill(0n);
+          for (let x = 0; x < 5; x++) {
+            col[x] = state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20];
+          }
+          const theta = new Array(5).fill(0n);
+          for (let x = 0; x < 5; x++) {
+            theta[x] = col[(x + 4) % 5] ^ rotl64(col[(x + 1) % 5], 1);
+          }
+          for (let x = 0; x < 5; x++) {
+            for (let y = 0; y < 5; y++) {
+              state[x + 5 * y] ^= theta[x];
+            }
+          }
+          const perm = new Array(25).fill(0n);
+          for (let x = 0; x < 5; x++) {
+            for (let y = 0; y < 5; y++) {
+              perm[y + 5 * ((2 * x + 3 * y) % 5)] = rotl64(state[x + 5 * y], rho[x + 5 * y]);
+            }
+          }
+          for (let x = 0; x < 5; x++) {
+            for (let y = 0; y < 5; y++) {
+              const i = x + 5 * y;
+              const n1 = perm[((x + 1) % 5) + 5 * y];
+              const n2 = perm[((x + 2) % 5) + 5 * y];
+              state[i] = (perm[i] ^ ((~n1 & mask64) & n2)) & mask64;
+            }
+          }
+          state[0] ^= rc[round];
         }
       }
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      account = await signer.getAddress();
-      document.getElementById("walletText").innerText = `${account.slice(0, 6)}...${account.slice(-4)}`;
-      document.getElementById("btnConnect").innerText = "Connected";
-      print("Wallet connected.");
-    } catch (e) {
-      print("Connection error: " + e.message);
-    }
-  }
 
-  async function parseStamp(input) {
-    const f = input.files[0];
-    if (!f) return;
-    const match = f.name.match(/\.slot(\d+)\.Q$/i);
-    if (match) {
-      document.getElementById("slotNum").value = match[1];
-    }
-    const buf = await f.arrayBuffer();
-    if (buf.byteLength === 157) {
-      const view = new DataView(buf);
-      const totalBytes = Number(view.getBigUint64(0, false));
-      const totalBlocks = Math.max(1, Math.ceil(totalBytes / 128));
-      document.getElementById("blockCount").value = String(totalBlocks);
-    }
-  }
-
-  async function executeSeal() {
-    if (!signer) await connectWallet();
-    if (!signer) return;
-
-    const file = document.getElementById("fileIn").files[0];
-    if (!file) {
-      alert("Select a file first.");
-      return;
-    }
-
-    const uid = document.getElementById("uid").value.trim() || "guest";
-    const ukey = document.getElementById("ukey").value.trim() || "guest";
-    const btn = document.getElementById("btnSeal");
-
-    try {
-      btn.disabled = true;
-      print("Initializing...");
-      const contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
-
-      const metric = Math.max(file.size, 10000000);
-      const tx = await contract.openSessionA(
-        BigInt(metric),
-        SIGNER_ADDR,
-        2,
-        SALT,
-        EXT_KEY,
-        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
-      );
-      print("Confirming transaction...");
-      const receipt = await tx.wait();
-
-      const iface = new ethers.Interface(ABI);
-      let refId = null;
-      for (const item of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(item);
-          if (parsed && parsed.name === "RefCommitted") {
-            refId = parsed.args.refId;
-            break;
-          }
-        } catch (_) {}
+      let hex = '';
+      for (let i = 0; i < 4; i++) {
+        const lane = state[i];
+        for (let b = 0; b < 8; b++) {
+          hex += Number((lane >> BigInt(b * 8)) & 0xffn).toString(16).padStart(2, '0');
+        }
       }
-      if (!refId && receipt.logs.length > 0) refId = receipt.logs[0].topics[1];
-
-      print("Processing file...");
-      const fd = new FormData();
-      fd.append("refId", refId);
-      fd.append("account", account);
-      fd.append("username", uid);
-      fd.append("password", ukey);
-      fd.append("file", file);
-
-      const res = await fetch(`${GATEWAY}/api/fold`, { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Server rejected request");
-
-      const blob = await res.blob();
-      const slot = res.headers.get("X-Slot-Id") || "1";
-      const totalBlocks = res.headers.get("X-Total-Blocks") || String(Math.max(1, Math.ceil(file.size / 128)));
-
-      document.getElementById("slotNum").value = slot;
-      document.getElementById("blockCount").value = totalBlocks;
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${file.name}.slot${slot}.Q`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      print(`Done. Stamp downloaded: ${file.name}.slot${slot}.Q`);
-    } catch (e) {
-      print("Failed: " + e.message);
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  async function executeRetrieve() {
-    if (!signer) await connectWallet();
-    if (!signer) return;
-
-    const file = document.getElementById("stampIn").files[0];
-    if (!file) {
-      alert("Select a stamp file first.");
-      return;
+      return hex;
     }
 
-    const uid = document.getElementById("uid").value.trim() || "guest";
-    const ukey = document.getElementById("ukey").value.trim() || "guest";
-    const slot = parseInt(document.getElementById("slotNum").value, 10) || 1;
-    const blocks = parseInt(document.getElementById("blockCount").value, 10) || 1;
-    const btn = document.getElementById("btnOpen");
+    const REF_COMMITTED_TOPIC = '0x' + keccak256Hex(utf8ToBytes('RefCommitted(bytes32)'));
 
-    try {
-      btn.disabled = true;
-      print("Initializing...");
-      const contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
+    function padWord(hexStr) {
+      return hexStr.toLowerCase().replace(/^0x/, '').padStart(64, '0');
+    }
 
-      const tx = await contract.openSessionB(
-        slot,
-        0n,
-        BigInt(blocks),
-        SIGNER_ADDR,
-        2,
-        SALT,
-        EXT_KEY,
-        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
+    function uintWord(val) {
+      return BigInt(val).toString(16).padStart(64, '0');
+    }
+
+    function encodeOpenSessionA(maxMetric, nodeAddr) {
+      const selector = keccak256Hex(utf8Bytes('openSessionA(uint64,address,uint8,bytes32,bytes)')).slice(0, 8);
+      return (
+        '0x' +
+        selector +
+        uintWord(maxMetric) +
+        padWord(nodeAddr) +
+        uintWord(2) +
+        padWord(SESSION_SALT) +
+        uintWord(5 * 32) +
+        uintWord(64) +
+        '00'.repeat(64)
       );
-      print("Confirming transaction...");
-      const receipt = await tx.wait();
-
-      const iface = new ethers.Interface(ABI);
-      let refId = null;
-      for (const item of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(item);
-          if (parsed && parsed.name === "RefCommitted") {
-            refId = parsed.args.refId;
-            break;
-          }
-        } catch (_) {}
-      }
-      if (!refId && receipt.logs.length > 0) refId = receipt.logs[0].topics[1];
-
-      print("Retrieving file...");
-      const fd = new FormData();
-      fd.append("refId", refId);
-      fd.append("account", account);
-      fd.append("slotId", slot.toString());
-      fd.append("rStart", "0");
-      fd.append("rEnd", blocks.toString());
-      fd.append("username", uid);
-      fd.append("password", ukey);
-      fd.append("qfile", file);
-
-      const res = await fetch(`${GATEWAY}/api/restore`, { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Server rejected request");
-
-      const blob = await res.blob();
-      const filename = res.headers.get("X-Original-Filename") || file.name.replace(/\.slot\d+\.Q$/i, "").replace(/\.Q$/i, "");
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename.startsWith("restored_") ? filename : `restored_${filename}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      print("Done. File retrieved.");
-    } catch (e) {
-      print("Failed: " + e.message);
-    } finally {
-      btn.disabled = false;
     }
-  }
-</script>
 
+    function encodeOpenSessionB(slotId, rStart, rEnd, nodeAddr) {
+      const selector = keccak256Hex(utf8Bytes('openSessionB(uint32,uint64,uint64,address,uint8,bytes32,bytes)')).slice(0, 8);
+      return (
+        '0x' +
+        selector +
+        uintWord(slotId) +
+        uintWord(rStart) +
+        uintWord(rEnd) +
+        padWord(nodeAddr) +
+        uintWord(2) +
+        padWord(SESSION_SALT) +
+        uintWord(7 * 32) +
+        uintWord(64) +
+        '00'.repeat(64)
+      );
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1048576).toFixed(2)} MB`;
+    }
+
+    function setInlineMessage(elId, text, tone) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.className = 'inline-msg';
+      el.textContent = text || '';
+      if (text && tone) {
+        el.classList.add(`is-${tone}`);
+      }
+    }
+
+    function setServiceBadge(text, stateClass) {
+      const badge = document.getElementById('service-badge');
+      const label = document.getElementById('service-badge-text');
+      if (badge) {
+        badge.className = 'status-badge';
+        if (stateClass) badge.classList.add(stateClass);
+      }
+      if (label) {
+        label.textContent = text;
+      }
+    }
+
+    function setBusyState(busy, targetBtnId, labelText) {
+      isBusy = busy;
+      const storeBtn = document.getElementById('store-btn');
+      const restoreBtn = document.getElementById('restore-btn');
+      if (storeBtn) {
+        storeBtn.disabled = busy;
+        if (!busy) storeBtn.textContent = 'Seal & Download .Q';
+      }
+      if (restoreBtn) {
+        restoreBtn.disabled = busy;
+        if (!busy) restoreBtn.textContent = 'Restore File';
+      }
+      if (busy && targetBtnId && labelText) {
+        const targetBtn = document.getElementById(targetBtnId);
+        if (targetBtn) targetBtn.textContent = labelText;
+      }
+    }
+
+    async function persistSlotId(slotVal) {
+      if (!window.notebookAppApi || typeof window.notebookAppApi.setAppState !== 'function') return;
+      try {
+        await window.notebookAppApi.setAppState({ lastSlotId: Number(slotVal) || 1 });
+      } catch (_) {}
+    }
+
+    async function loadSavedState() {
+      if (!window.notebookAppApi || typeof window.notebookAppApi.getAppState !== 'function') return;
+      try {
+        const saved = await window.notebookAppApi.getAppState();
+        if (saved && saved.lastSlotId) {
+          const slotInput = document.getElementById('slot-id');
+          if (slotInput) slotInput.value = String(saved.lastSlotId);
+        }
+      } catch (_) {}
+    }
+
+    async function checkServiceHealth() {
+      try {
+        const resp = await fetch(`${GATEWAY_ORIGIN}/health`);
+        if (!resp.ok) throw new Error('Status ' + resp.status);
+        const data = await resp.json();
+        if (data && data.enclave_signer) {
+          serviceNodeAddress = data.enclave_signer;
+        }
+        setServiceBadge('Ready', 'is-ready');
+      } catch (_) {
+        setServiceBadge('Offline', 'is-offline');
+      }
+    }
+
+    async function ensureSapphireChain() {
+      const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
+      if (String(currentChain).toLowerCase() === CHAIN_ID_HEX) return;
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: CHAIN_ID_HEX }]
+        });
+      } catch (_) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: CHAIN_ID_HEX,
+            chainName: 'Sapphire Testnet',
+            nativeCurrency: { name: 'TEST', symbol: 'TEST', decimals: 18 },
+            rpcUrls: [CHAIN_RPC_URL],
+            blockExplorerUrls: [CHAIN_EXPLORER_URL]
+          }]
+        });
+      }
+    }
+
+    async function connectWallet() {
+      const btn = document.getElementById('wallet-btn');
+      if (!window.ethereum) {
+        setInlineMessage('store-msg', 'No Web3 wallet detected. Install a browser wallet and retry.', 'error');
+        return null;
+      }
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (!accounts || !accounts.length) {
+          throw new Error('Wallet access was not granted.');
+        }
+        await ensureSapphireChain();
+        walletAddress = accounts[0];
+        if (btn) {
+          btn.textContent = `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
+          btn.classList.add('is-connected');
+        }
+        return walletAddress;
+      } catch (err) {
+        setInlineMessage('store-msg', `Wallet connection failed: ${err.message || 'Check your wallet.'}`, 'error');
+        return null;
+      }
+    }
+
+    async function waitForReceipt(txHash) {
+      for (let attempt = 0; attempt < 90; attempt++) {
+        const receipt = await window.ethereum.request({
+          method: 'eth_getTransactionReceipt',
+          params: [txHash]
+        });
+        if (receipt) {
+          if (parseInt(receipt.status, 16) !== 1) {
+            throw new Error('Transaction reverted on-chain. Verify your 5.0 TEST balance and parameters.');
+          }
+          return receipt;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      throw new Error('Transaction confirmation timed out. Check your wallet activity.');
+    }
+
+    function extractRefId(receipt) {
+      const logs = Array.isArray(receipt.logs) ? receipt.logs : [];
+      for (let i = 0; i < logs.length; i++) {
+        const entry = logs[i];
+        if ((entry.address || '').toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
+        const topics = Array.isArray(entry.topics) ? entry.topics : [];
+        if (topics[0] && topics[0].toLowerCase() === REF_COMMITTED_TOPIC) {
+          return topics[1] || (entry.data ? entry.data.slice(0, 66) : null);
+        }
+      }
+      throw new Error('Session reference not found in transaction receipt.');
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+
+    function onStoreFileChange(input) {
+      const nameEl = document.getElementById('store-file-name');
+      const metaEl = document.getElementById('store-file-meta');
+      const file = input && input.files ? input.files[0] : null;
+      if (!file) {
+        if (nameEl) {
+          nameEl.textContent = 'Select or drop any file…';
+          nameEl.classList.add('is-empty');
+        }
+        if (metaEl) metaEl.textContent = 'Up to 100 MB';
+        return;
+      }
+      if (nameEl) {
+        nameEl.textContent = file.name;
+        nameEl.classList.remove('is-empty');
+      }
+      if (metaEl) {
+        metaEl.textContent = `${formatBytes(file.size)} (${file.size.toLocaleString()} bytes)`;
+      }
+      if (file.size === 0) {
+        setInlineMessage('store-msg', 'Selected file is empty. Choose a non-empty file.', 'error');
+      } else if (file.size > MAX_FILE_BYTES) {
+        setInlineMessage('store-msg', 'File exceeds 100 MB limit. Choose a smaller file.', 'error');
+      } else {
+        setInlineMessage('store-msg', '', '');
+      }
+    }
+
+    async function onRestoreFileChange(input) {
+      const nameEl = document.getElementById('restore-file-name');
+      const metaEl = document.getElementById('restore-file-meta');
+      const file = input && input.files ? input.files[0] : null;
+      if (!file) {
+        if (nameEl) {
+          nameEl.textContent = 'Select or drop .Q stamp…';
+          nameEl.classList.add('is-empty');
+        }
+        if (metaEl) metaEl.textContent = '157-byte stamp required';
+        return;
+      }
+      if (nameEl) {
+        nameEl.textContent = file.name;
+        nameEl.classList.remove('is-empty');
+      }
+      if (file.size !== STAMP_BYTE_LEN) {
+        if (metaEl) metaEl.textContent = `${file.size} bytes (expected ${STAMP_BYTE_LEN})`;
+        setInlineMessage('restore-msg', 'Invalid stamp size. Select a 157-byte .Q file.', 'error');
+        return;
+      }
+      try {
+        const buf = await file.arrayBuffer();
+        const view = new DataView(buf);
+        restoredByteCount = Number(view.getBigUint64(0, false));
+        restoredBlockCount = Math.max(1, Math.ceil(restoredByteCount / 128));
+        if (metaEl) {
+          metaEl.textContent = `157-byte stamp • ${formatBytes(restoredByteCount)}`;
+        }
+        setInlineMessage('restore-msg', '', '');
+      } catch (_) {
+        setInlineMessage('restore-msg', 'Could not read stamp header. Select a valid .Q file.', 'error');
+      }
+    }
+
+    function onSlotIdChange(input) {
+      const val = parseInt(input.value, 10);
+      if (!Number.isFinite(val) || val < 1) {
+        input.value = '1';
+      }
+      persistSlotId(input.value);
+    }
+
+    async function handleStore() {
+      if (isBusy) return;
+      const fileInput = document.getElementById('store-file');
+      const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+      if (!file) {
+        setInlineMessage('store-msg', 'No file selected. Choose a file to seal first.', 'error');
+        return;
+      }
+      if (file.size === 0 || file.size > MAX_FILE_BYTES) {
+        setInlineMessage('store-msg', 'File must be between 1 byte and 100 MB.', 'error');
+        return;
+      }
+
+      const acct = walletAddress || (await connectWallet());
+      if (!acct) return;
+
+      try {
+        setBusyState(true, 'store-btn', 'Confirming deposit…');
+        setInlineMessage('store-msg', 'Approve the 5.0 TEST deposit in your wallet…', 'active');
+
+        const reqMetric = Math.max(file.size, 1048576);
+        const calldata = encodeOpenSessionA(reqMetric, serviceNodeAddress);
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from: acct,
+            to: CONTRACT_ADDRESS,
+            value: DEPOSIT_WEI_HEX,
+            data: calldata
+          }]
+        });
+
+        setInlineMessage('store-msg', 'Waiting for network confirmation…', 'active');
+        const receipt = await waitForReceipt(txHash);
+        const refId = extractRefId(receipt);
+
+        setBusyState(true, 'store-btn', 'Sealing file…');
+        setInlineMessage('store-msg', 'Sealing file and generating .Q stamp…', 'active');
+
+        const formData = new FormData();
+        formData.append('refId', refId);
+        formData.append('account', acct);
+        formData.append('username', 'guest');
+        formData.append('password', 'guest');
+        formData.append('file', file);
+
+        const resp = await fetch(`${GATEWAY_ORIGIN}/api/fold`, {
+          method: 'POST',
+          body: formData
+        });
+        if (!resp.ok) {
+          throw new Error(`Gateway returned status ${resp.status}.`);
+        }
+
+        const stampBlob = await resp.blob();
+        const slotHeader = resp.headers.get('X-Slot-Id');
+        if (slotHeader) {
+          const slotInput = document.getElementById('slot-id');
+          if (slotInput) slotInput.value = slotHeader;
+          await persistSlotId(slotHeader);
+        }
+
+        const downloadName = `${file.name}.Q`;
+        triggerDownload(stampBlob, downloadName);
+        setInlineMessage(
+          'store-msg',
+          `Sealed — downloaded ${downloadName} (Slot ${slotHeader || '1'}).`,
+          'success'
+        );
+      } catch (err) {
+        setInlineMessage('store-msg', `Seal failed: ${err.message || 'Please try again.'}`, 'error');
+      } finally {
+        setBusyState(false);
+      }
+    }
+
+    async function handleRestore() {
+      if (isBusy) return;
+      const fileInput = document.getElementById('restore-file');
+      const stampFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+      if (!stampFile) {
+        setInlineMessage('restore-msg', 'No stamp selected. Choose a 157-byte .Q file first.', 'error');
+        return;
+      }
+      if (stampFile.size !== STAMP_BYTE_LEN) {
+        setInlineMessage('restore-msg', 'Invalid stamp size. Select a 157-byte .Q file.', 'error');
+        return;
+      }
+
+      const slotInput = document.getElementById('slot-id');
+      const slotId = slotInput ? parseInt(slotInput.value, 10) : 1;
+      if (!Number.isFinite(slotId) || slotId < 1) {
+        setInlineMessage('restore-msg', 'Enter a valid Slot ID (1 or higher).', 'error');
+        return;
+      }
+
+      const acct = walletAddress || (await connectWallet());
+      if (!acct) return;
+
+      try {
+        const buf = await stampFile.arrayBuffer();
+        const view = new DataView(buf);
+        restoredByteCount = Number(view.getBigUint64(0, false));
+        restoredBlockCount = Math.max(1, Math.ceil(restoredByteCount / 128));
+
+        setBusyState(true, 'restore-btn', 'Confirming deposit…');
+        setInlineMessage('restore-msg', 'Approve the 5.0 TEST deposit in your wallet…', 'active');
+
+        const calldata = encodeOpenSessionB(slotId, 0, restoredBlockCount, serviceNodeAddress);
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from: acct,
+            to: CONTRACT_ADDRESS,
+            value: DEPOSIT_WEI_HEX,
+            data: calldata
+          }]
+        });
+
+        setInlineMessage('restore-msg', 'Waiting for network confirmation…', 'active');
+        const receipt = await waitForReceipt(txHash);
+        const refId = extractRefId(receipt);
+
+        setBusyState(true, 'restore-btn', 'Restoring file…');
+        setInlineMessage('restore-msg', 'Restoring original file bit-for-bit…', 'active');
+
+        const formData = new FormData();
+        formData.append('refId', refId);
+        formData.append('account', acct);
+        formData.append('slotId', String(slotId));
+        formData.append('rStart', '0');
+        formData.append('rEnd', String(restoredBlockCount));
+        formData.append('username', 'guest');
+        formData.append('password', 'guest');
+        formData.append('qfile', stampFile);
+
+        const resp = await fetch(`${GATEWAY_ORIGIN}/api/restore`, {
+          method: 'POST',
+          body: formData
+        });
+        if (!resp.ok) {
+          throw new Error(`Gateway returned status ${resp.status}.`);
+        }
+
+        const outBlob = await resp.blob();
+        const headerName = resp.headers.get('X-Original-Filename');
+        const fallbackName = 'restored_' + stampFile.name.replace(/\.q$/i, '');
+        const downloadName = headerName || fallbackName;
+
+        triggerDownload(outBlob, downloadName);
+        setInlineMessage(
+          'restore-msg',
+          `Restored bit-for-bit — downloaded ${downloadName} (${formatBytes(outBlob.size)}).`,
+          'success'
+        );
+      } catch (err) {
+        setInlineMessage('restore-msg', `Restore failed: ${err.message || 'Please try again.'}`, 'error');
+      } finally {
+        setBusyState(false);
+      }
+    }
+
+    function wireDragFeedback(wellId, inputId) {
+      const well = document.getElementById(wellId);
+      const input = document.getElementById(inputId);
+      if (!well || !input) return;
+      input.addEventListener('dragenter', () => well.classList.add('is-dragover'));
+      input.addEventListener('dragleave', () => well.classList.remove('is-dragover'));
+      input.addEventListener('drop', () => well.classList.remove('is-dragover'));
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      wireDragFeedback('store-well', 'store-file');
+      wireDragFeedback('restore-well', 'restore-file');
+      await loadSavedState();
+      checkServiceHealth();
+
+      if (window.ethereum && typeof window.ethereum.on === 'function') {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          const btn = document.getElementById('wallet-btn');
+          if (accounts && accounts.length) {
+            walletAddress = accounts[0];
+            if (btn) {
+              btn.textContent = `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
+              btn.classList.add('is-connected');
+            }
+          } else {
+            walletAddress = null;
+            if (btn) {
+              btn.textContent = 'Connect Wallet';
+              btn.classList.remove('is-connected');
+            }
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
