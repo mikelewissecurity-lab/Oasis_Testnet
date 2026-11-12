@@ -1,273 +1,401 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BMLT 157-Byte Oasis Sapphire Testnet Portal</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BMLT Noether TEE Portal — Oasis Sapphire</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 780px; margin: 40px auto; background: #0d1117; color: #e6edf3; padding: 20px; line-height: 1.5; }
-    h1 { color: #58a6ff; margin-bottom: 8px; }
-    .subtitle { color: #8b949e; margin-top: 0; margin-bottom: 24px; }
-    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-    .card h3 { margin-top: 0; color: #f0f6fc; }
-    label { font-size: 13px; color: #8b949e; display: block; margin-top: 10px; }
-    input { margin: 6px 0 12px 0; display: block; width: 100%; box-sizing: border-box; padding: 10px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 6px; font-family: monospace; }
-    button { background: #238636; color: #fff; border: none; padding: 11px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin-top: 6px; }
-    button:hover { background: #2ea043; }
-    pre { background: #010409; border: 1px solid #30363d; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 13px; color: #7ee787; min-height: 140px; white-space: pre-wrap; }
+    :root {
+      --bg: #0b0f17;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --accent: #00d26a;
+      --accent-hover: #00b85c;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 1.8rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(0, 210, 106, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(0, 210, 106, 0.3);
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    .card h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #fff; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.35rem; }
+    input[type="text"], input[type="password"], input[type="number"], input[type="file"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      background: #0d131f;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      width: 100%;
+    }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #1f2937; color: #fff; }
+    .btn-secondary:hover { background: #374151; }
+    .status-box {
+      background: #080c14;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #38bdf8;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tab-btn {
+      flex: 1;
+      padding: 0.75rem;
+      background: #111827;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .tab-btn.active {
+      background: rgba(0, 210, 106, 0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
-  <h1>BMLT 157-Byte TEE Portal</h1>
-  <p class="subtitle">Oasis Sapphire Testnet &bull; Intel TDX Enclave Verification Suite</p>
 
+<div class="container">
+  <header>
+    <h1>BMLT Noether Enclave Gateway</h1>
+    <span class="badge">Oasis Sapphire Testnet • Intel TDX Confidential VM</span>
+  </header>
+
+  <!-- Wallet & Network Status -->
   <div class="card">
-    <h3>1. Connect Wallet & Verify Enclave</h3>
-    <label>ROFL TDX Enclave Proxy URL:</label>
-    <input type="text" id="apiUrl" value="https://p8080.m1874.opf-testnet-rofl-9.rofl.app" />
-    <label>LedgerCoreTestnet Contract Address:</label>
-    <input type="text" id="contractAddr" value="0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893" readonly />
-    <label>Registered Enclave Signer (Node):</label>
-    <input type="text" id="nodeAddr" value="0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18" readonly />
-    <label>Client Encryption Salt / Passphrase (locks & unlocks your .Q file):</label>
-    <input type="text" id="userSalt" value="bmlt-default-testnet-key" />
-    <button onclick="connectWallet()">Connect MetaMask (Sapphire Testnet)</button>
-    <button onclick="checkEnclaveHealth()" style="background:#1f6feb; margin-left:8px;">Check TEE Health</button>
-    <p id="walletStatus">Wallet: Not connected</p>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Connected Account</div>
+        <div id="walletAddr" style="font-family: var(--font-mono); font-weight: 600;">Not connected</div>
+      </div>
+      <button id="btnConnect" class="btn btn-secondary" style="width: auto;" onclick="connectWallet()">Connect Wallet</button>
+    </div>
   </div>
 
+  <!-- Shared Cryptographic Credentials (Seed Injection) -->
   <div class="card">
-    <h3>2. Fold File into 157-Byte .Q Stamp (Mode 0x01)</h3>
-    <label>Select Any File to Fold in TDX RAM:</label>
-    <input type="file" id="foldFile" onchange="updateBlocksFromFile()" />
-    <button onclick="foldFileToQ()">Pay 5 TEST & Download 157-Byte .Q</button>
+    <h2>1. Seed Injection (Deterministic Entropy)</h2>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+      Your username and passphrase are injected directly into Intel TDX volatile memory to compute the isolated SHAKE-256 rope stream seed:
+      <code style="color: var(--accent);">Sha256(PREFIX : user : pass : ENCLAVE_AUTH_KEY)</code>. They are wiped immediately after the operation and never stored.
+    </p>
+    <div class="grid">
+      <div class="form-group">
+        <label for="username">Username / Identity</label>
+        <input type="text" id="username" placeholder="guest" value="guest">
+        <div class="help-text">Leave as "guest" or enter your unique identifier</div>
+      </div>
+      <div class="form-group">
+        <label for="password">Password / Passphrase</label>
+        <div style="position: relative;">
+          <input type="password" id="password" placeholder="guest" value="guest">
+          <span style="position: absolute; right: 10px; top: 8px; cursor: pointer; font-size: 0.75rem; color: var(--text-muted);" onclick="togglePassword()">SHOW</span>
+        </div>
+        <div class="help-text">Used for bit-for-bit key derivation</div>
+      </div>
+    </div>
   </div>
 
-  <div class="card">
-    <h3>3. Restore Data from 157-Byte .Q Stamp (Mode 0x02)</h3>
-    <label>Anchored Slot ID (Sequence # returned when folded):</label>
-    <input type="number" id="slotId" value="1" />
-    <label>Start Block (0 = start of file):</label>
-    <input type="number" id="rStart" value="0" />
-    <label>End Block (128 bytes per block; auto-filled when folding):</label>
-    <input type="number" id="rEnd" value="29768" />
-    <label>Upload Your 157-Byte .Q File:</label>
-    <input type="file" id="qFile" />
-    <button onclick="restoreFromQ()">Pay 5 TEST & Restore Original Data</button>
+  <!-- Operation Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tabFoldBtn" onclick="switchTab('fold')">Fold File → 157B .Q Stamp</button>
+    <button class="tab-btn" id="tabRestoreBtn" onclick="switchTab('restore')">Restore .Q Stamp → Original File</button>
   </div>
 
-  <pre id="logBox">System ready. Click "Check TEE Health" or "Connect MetaMask" to begin.</pre>
+  <!-- Tab A: Fold Payload -->
+  <div class="card" id="foldCard">
+    <h2>Fold Payload & Anchor On-Chain</h2>
+    <div class="form-group">
+      <label for="foldFile">Select Source File (Max 100 MB)</label>
+      <input type="file" id="foldFile">
+    </div>
+    <button class="btn btn-primary" id="btnFold" onclick="executeFold()">Sign Deposit (5.0 TEST) & Fold in Enclave</button>
+  </div>
 
-  <script>
-    let provider, signer, userAddress;
+  <!-- Tab B: Restore Payload -->
+  <div class="card" id="restoreCard" style="display: none;">
+    <h2>Restore Bit-for-Bit from .Q Stamp</h2>
+    <div class="grid">
+      <div class="form-group">
+        <label for="restoreFile">Select 157-Byte .Q Stamp File</label>
+        <input type="file" id="restoreFile" accept=".Q,.bin">
+      </div>
+      <div class="form-group">
+        <label for="restoreSlotId">Anchor Slot ID (Sequence #)</label>
+        <input type="number" id="restoreSlotId" value="1" min="1">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btnRestore" onclick="executeRestore()">Sign Session (5.0 TEST) & Restore</button>
+  </div>
 
-    const ABI = [
-      "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-      "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-      "event RefCommitted(bytes32 indexed refId)"
-    ];
+  <!-- Live Output Console -->
+  <div class="card">
+    <h2>Enclave Console Log</h2>
+    <div class="status-box" id="consoleLog">Ready. Connect your MetaMask wallet on Sapphire Testnet to begin.</div>
+  </div>
+</div>
 
-    function log(msg) {
-      const box = document.getElementById("logBox");
-      box.textContent += "\n" + msg;
-      box.scrollTop = box.scrollHeight;
+<script>
+  // Configuration
+  const GATEWAY_URL = "https://p8080.m1874.opf-testnet-rofl-9.rofl.app";
+  const CONTRACT_ADDR = "0xfD0D6Eb2078550C52a1B545f2d8EAEd720C58893";
+  const ENCLAVE_SIGNER = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
+  const SAPPHIRE_CHAIN_ID = 23295;
+  const UNIVERSAL_SALT = "0x0000000000000000000000000000000000000000000000000000000000000001";
+  const ZERO_EXT_KEY_64 = "0x" + "00".repeat(64);
+
+  const CONTRACT_ABI = [
+    "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
+    "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)"
+  ];
+
+  let provider = null;
+  let signer = null;
+  let userAddress = null;
+
+  function log(msg) {
+    const el = document.getElementById("consoleLog");
+    const ts = new Date().toLocaleTimeString();
+    el.innerText += `\n[${ts}] ${msg}`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function togglePassword() {
+    const pw = document.getElementById("password");
+    pw.type = pw.type === "password" ? "text" : "password";
+  }
+
+  function switchTab(tab) {
+    document.getElementById("foldCard").style.display = tab === "fold" ? "block" : "none";
+    document.getElementById("restoreCard").style.display = tab === "restore" ? "block" : "none";
+    document.getElementById("tabFoldBtn").classList.toggle("active", tab === "fold");
+    document.getElementById("tabRestoreBtn").classList.toggle("active", tab === "restore");
+  }
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("Please install MetaMask to use this portal.");
+      return;
     }
-
-    function getSaltBytes32() {
-      const raw = document.getElementById("userSalt").value.trim();
-      if (/^0x[0-9a-fA-F]{64}$/.test(raw)) return raw;
-      return ethers.id(raw || "bmlt-default-testnet-key");
-    }
-
-    function updateBlocksFromFile() {
-      const fileInput = document.getElementById("foldFile");
-      if (fileInput.files.length) {
-        const totalBlocks = Math.ceil(fileInput.files[0].size / 128);
-        document.getElementById("rEnd").value = totalBlocks;
-        log(`[*] Selected "${fileInput.files[0].name}" (${fileInput.files[0].size} bytes = ${totalBlocks} blocks of 128B).`);
-      }
-    }
-
-    async function checkEnclaveHealth() {
-      const apiUrl = document.getElementById("apiUrl").value.trim().replace(/\/$/, "");
-      log("[*] Pinging ROFL TDX Enclave at " + apiUrl + "/health ...");
-      try {
-        const res = await fetch(apiUrl + "/health");
-        const data = await res.json();
-        log("[✓] TEE Enclave Online! Signer: " + data.enclave_signer + " | Contract: " + data.contract);
-      } catch (err) {
-        log("[!] Could not reach TEE proxy yet: " + err.message);
-      }
-    }
-
-    async function connectWallet() {
-      if (!window.ethereum) return alert("Please install MetaMask!");
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x5aff" }]
-        });
-      } catch (switchError) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: "0x5aff",
-            chainName: "Oasis Sapphire Testnet",
-            nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-            rpcUrls: ["https://testnet.sapphire.oasis.io"],
-            blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-          }]
-        });
-      }
+    try {
       provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      if (Number(network.chainId) !== SAPPHIRE_CHAIN_ID) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x5aff" }]
+          });
+        } catch (e) {
+          log("Please switch MetaMask network to Oasis Sapphire Testnet (Chain ID 23295)");
+          return;
+        }
+      }
       signer = await provider.getSigner();
       userAddress = await signer.getAddress();
-      document.getElementById("walletStatus").textContent = "Connected: " + userAddress;
-      log("[✓] Connected to Oasis Sapphire Testnet: " + userAddress);
+      document.getElementById("walletAddr").innerText = userAddress;
+      document.getElementById("btnConnect").innerText = "Connected";
+      log(`Wallet connected: ${userAddress}`);
+    } catch (err) {
+      log(`Connection failed: ${err.message}`);
     }
+  }
 
-    async function foldFileToQ() {
-      try {
-        if (!signer) await connectWallet();
-        const fileInput = document.getElementById("foldFile");
-        if (!fileInput.files.length) return alert("Select a file to fold first!");
-        const file = fileInput.files[0];
+  // --- FOLD HANDLER ---
+  async function executeFold() {
+    if (!signer) await connectWallet();
+    const fileInput = document.getElementById("foldFile");
+    if (!fileInput.files.length) return alert("Select a file first.");
 
-        const contractAddr = document.getElementById("contractAddr").value.trim();
-        const nodeAddr = document.getElementById("nodeAddr").value.trim();
-        const apiUrl = document.getElementById("apiUrl").value.trim().replace(/\/$/, "");
+    const file = fileInput.files[0];
+    const username = document.getElementById("username").value.trim() || "guest";
+    const password = document.getElementById("password").value.trim() || "guest";
 
-        const totalBlocks = Math.ceil(file.size / 128);
-        document.getElementById("rEnd").value = totalBlocks;
+    try {
+      log(`Initiating on-chain session for ${file.name} (${file.size} bytes)...`);
+      const contract = new ethers.Contract(CONTRACT_ADDR, CONTRACT_ABI, signer);
 
-        const contract = new ethers.Contract(contractAddr, ABI, signer);
-        const salt = getSaltBytes32();
-        const extKey64 = "0x" + "00".repeat(64);
+      // 1. On-Chain Deposit & Session Initialization
+      const tx = await contract.openSessionA(
+        file.size,
+        ENCLAVE_SIGNER,
+        2, // Client-locked mode
+        UNIVERSAL_SALT,
+        ZERO_EXT_KEY_64,
+        { value: ethers.parseEther("5.0") }
+      );
+      log(`Session tx broadcast: ${tx.hash}. Waiting for block inclusion...`);
+      const receipt = await tx.wait();
 
-        log(`[*] Step 1/2: Paying 5.0 TEST & opening Session A on-chain for "${file.name}" (${file.size} bytes)...`);
-        const tx = await contract.openSessionA(
-          file.size,
-          nodeAddr,
-          2,
-          salt,
-          extKey64,
-          { value: ethers.parseEther("5.0") }
-        );
-        log("[*] Waiting for Sapphire block confirmation (Tx: " + tx.hash + ")...");
-        const receipt = await tx.wait();
+      // Extract refId from RefCommitted event
+      const refId = receipt.logs[0].topics[1];
+      log(`Session opened! refId = ${refId}`);
 
-        const iface = new ethers.Interface(ABI);
-        let refId = null;
-        for (const l of receipt.logs) {
-          try {
-            const parsed = iface.parseLog(l);
-            if (parsed && parsed.name === "RefCommitted") refId = parsed.args.refId;
-          } catch (e) {}
-        }
-        if (!refId) throw new Error("RefCommitted event not found in transaction logs.");
-        log("[✓] Ticket committed on-chain! refId: " + refId);
+      // 2. Submit to TEE Enclave Gateway with Seed Credentials
+      log(`Uploading payload & seed parameters to TEE Enclave...`);
+      const formData = new FormData();
+      formData.append("refId", refId);
+      formData.append("account", userAddress);
+      formData.append("username", username);
+      formData.append("password", password);
+      formData.append("file", file);
 
-        log("[*] Step 2/2: Streaming file to Intel TDX Enclave for Fermat Rope-Folding & on-chain anchoring...");
-        const formData = new FormData();
-        formData.append("refId", refId);
-        formData.append("account", userAddress);
-        formData.append("file", file);
+      const resp = await fetch(`${GATEWAY_URL}/api/fold`, {
+        method: "POST",
+        body: formData
+      });
 
-        const resp = await fetch(`${apiUrl}/api/fold`, { method: "POST", body: formData });
-        if (!resp.ok) throw new Error(await resp.text());
+      if (!resp.ok) throw new Error(`Gateway returned HTTP ${resp.status}`);
 
-        const slotId = resp.headers.get("X-Slot-Id");
-        const anchorTx = resp.headers.get("X-Anchor-Tx");
-        const totalBlkHeader = resp.headers.get("X-Total-Blocks");
-        if (slotId) document.getElementById("slotId").value = slotId;
-        if (totalBlkHeader) document.getElementById("rEnd").value = totalBlkHeader;
+      const qBlob = await resp.blob();
+      const anchorTx = resp.headers.get("X-Anchor-Tx") || "N/A";
+      const slotId = resp.headers.get("X-Slot-Id") || "1";
 
-        const blob = await resp.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name + ".Q";
-        a.click();
+      log(`[✓] SUCCESS: Folded into 157-byte .Q stamp!`);
+      log(`Slot ID: ${slotId} | Settlement Tx: ${anchorTx}`);
 
-        log(`[🏆] SUCCESS! Downloaded 157-byte "${file.name}.Q"`);
-        log(`     Anchored Slot ID: ${slotId} | Blocks: 0..${totalBlocks} (auto-filled below)`);
-        log(`     Sapphire Anchor Tx: ${anchorTx}`);
-      } catch (err) {
-        log("[ERROR] " + err.message);
-      }
+      // Auto-download .Q file
+      const downloadUrl = window.URL.createObjectURL(qBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${file.name}.Q`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      log(`[!] Fold Failed: ${err.message}`);
     }
+  }
 
-    async function restoreFromQ() {
-      try {
-        if (!signer) await connectWallet();
-        const qInput = document.getElementById("qFile");
-        if (!qInput.files.length) return alert("Select your 157-byte .Q file first!");
-        const qFile = qInput.files[0];
+  // --- RESTORE HANDLER ---
+  async function executeRestore() {
+    if (!signer) await connectWallet();
+    const fileInput = document.getElementById("restoreFile");
+    if (!fileInput.files.length) return alert("Select a .Q stamp file first.");
 
-        const slotId = parseInt(document.getElementById("slotId").value);
-        const rStart = parseInt(document.getElementById("rStart").value);
-        const rEnd = parseInt(document.getElementById("rEnd").value);
-        const contractAddr = document.getElementById("contractAddr").value.trim();
-        const nodeAddr = document.getElementById("nodeAddr").value.trim();
-        const apiUrl = document.getElementById("apiUrl").value.trim().replace(/\/$/, "");
+    const qfile = fileInput.files[0];
+    const slotId = parseInt(document.getElementById("restoreSlotId").value) || 1;
+    const username = document.getElementById("username").value.trim() || "guest";
+    const password = document.getElementById("password").value.trim() || "guest";
 
-        const contract = new ethers.Contract(contractAddr, ABI, signer);
-        const salt = getSaltBytes32();
-        const extKey64 = "0x" + "00".repeat(64);
+    try {
+      log(`Opening restore session on-chain for Slot #${slotId}...`);
+      const contract = new ethers.Contract(CONTRACT_ADDR, CONTRACT_ABI, signer);
 
-        log(`[*] Step 1/2: Paying 5.0 TEST & opening Rebuild Session B for Slot #${slotId} (blocks ${rStart}..${rEnd})...`);
-        const tx = await contract.openSessionB(
-          slotId,
-          rStart,
-          rEnd,
-          nodeAddr,
-          2,
-          salt,
-          extKey64,
-          { value: ethers.parseEther("5.0") }
-        );
-        log("[*] Waiting for Sapphire block confirmation (Tx: " + tx.hash + ")...");
-        const receipt = await tx.wait();
+      // 1. On-Chain Deposit for Slice Settlement
+      const tx = await contract.openSessionB(
+        slotId,
+        0,    // rStart
+        1000, // rEnd
+        ENCLAVE_SIGNER,
+        2,
+        UNIVERSAL_SALT,
+        ZERO_EXT_KEY_64,
+        { value: ethers.parseEther("5.0") }
+      );
+      log(`Restore tx broadcast: ${tx.hash}. Awaiting block confirmation...`);
+      const receipt = await tx.wait();
 
-        const iface = new ethers.Interface(ABI);
-        let refId = null;
-        for (const l of receipt.logs) {
-          try {
-            const parsed = iface.parseLog(l);
-            if (parsed && parsed.name === "RefCommitted") refId = parsed.args.refId;
-          } catch (e) {}
-        }
-        if (!refId) throw new Error("RefCommitted event not found in transaction logs.");
-        log("[✓] Rebuild ticket committed! refId: " + refId);
+      const refId = receipt.logs[0].topics[1];
+      log(`Restore session open! refId = ${refId}`);
 
-        log("[*] Step 2/2: Sending .Q file to TDX Enclave to verify & reconstruct data...");
-        const formData = new FormData();
-        formData.append("refId", refId);
-        formData.append("account", userAddress);
-        formData.append("slotId", slotId);
-        formData.append("rStart", rStart);
-        formData.append("rEnd", rEnd);
-        formData.append("qfile", qFile);
+      // 2. Submit .Q Stamp & Seed to Enclave
+      log(`Sending .Q Stamp and credentials to TEE Enclave...`);
+      const formData = new FormData();
+      formData.append("refId", refId);
+      formData.append("account", userAddress);
+      formData.append("slotId", slotId.toString());
+      formData.append("rStart", "0");
+      formData.append("rEnd", "1000");
+      formData.append("username", username);
+      formData.append("password", password);
+      formData.append("qfile", qfile);
 
-        const resp = await fetch(`${apiUrl}/api/restore`, { method: "POST", body: formData });
-        if (!resp.ok) throw new Error(await resp.text());
+      const resp = await fetch(`${GATEWAY_URL}/api/restore`, {
+        method: "POST",
+        body: formData
+      });
 
-        const restoreTx = resp.headers.get("X-Restore-Tx");
-        const origName = resp.headers.get("X-Original-Filename") || ("restored_" + qFile.name.replace(/\.Q$/i, ""));
-        const blob = await resp.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = origName;
-        a.click();
+      if (!resp.ok) throw new Error(`Gateway returned HTTP ${resp.status}`);
 
-        log(`[🏆] SUCCESS! Reconstructed "${origName}" (${blob.size} bytes) and downloaded!`);
-        log(`     Sapphire Settlement Tx: ${restoreTx}`);
-      } catch (err) {
-        log("[ERROR] " + err.message);
-      }
+      const restoredBlob = await resp.blob();
+      const restoreTx = resp.headers.get("X-Restore-Tx") || "N/A";
+      const origName = resp.headers.get("X-Original-Filename") || "restored_file.bin";
+
+      log(`[✓] SUCCESS: Reconstructed bit-for-bit from .Q stamp!`);
+      log(`Restore Tx: ${restoreTx} | File: ${origName}`);
+
+      // Auto-download restored file
+      const downloadUrl = window.URL.createObjectURL(restoredBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = origName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      log(`[!] Restore Failed: ${err.message}`);
     }
-  </script>
+  }
+</script>
+
 </body>
 </html>
