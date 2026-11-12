@@ -285,7 +285,7 @@
       badge.innerText = `● Online (${latency}ms)`;
       log(`[✓] Gateway Status: OK (${latency}ms)`);
       log(`    Enclave Signer: ${data.enclave_signer}`);
-      log(`    Contract:       ${data.contract}`);
+      log(`    Contract:        ${data.contract}`);
     } catch (e) {
       badge.className = "status-badge status-offline";
       badge.innerText = "● Unreachable";
@@ -370,14 +370,13 @@
       document.getElementById("btnFold").disabled = true;
       const contract = new ethers.Contract(contractAddr, CONTRACT_ABI, signer);
 
-      // Ensure metric cap covers any uncommitted slot reservation
       const reqMetric = Math.max(file.size, 1048576);
       log(`[*] Step 1/2: Paying 5.0 TEST & opening Session A on-chain for "${file.name}" (${file.size.toLocaleString()} bytes)...`);
 
       const tx = await contract.openSessionA(
         BigInt(reqMetric),
         enclaveSigner,
-        2, // Mode 2: Client-locked
+        2,
         DETERMINISTIC_SALT,
         EXT_KEY_64,
         { value: ethers.parseEther("5.0") }
@@ -385,7 +384,6 @@
       log(`[*] Broadcast tx: ${tx.hash}. Waiting for block inclusion...`);
       const receipt = await tx.wait();
 
-      // Robust event log decoding for RefCommitted(bytes32)
       const iface = new ethers.Interface(CONTRACT_ABI);
       let refId = null;
       for (const logItem of receipt.logs) {
@@ -408,7 +406,6 @@
       if (!refId) throw new Error("RefCommitted event not found in transaction receipt");
       log(`[✓] Session opened on-chain! Verified refId = ${refId}`);
 
-      // Submit payload to TEE Enclave
       log(`[*] Step 2/2: Uploading payload and entropy credentials to TEE Enclave...`);
       const formData = new FormData();
       formData.append("refId", refId);
@@ -437,7 +434,6 @@
       document.getElementById("rStart").value = "0";
       document.getElementById("rEnd").value = totalBlocks;
 
-      // Auto-download 157-byte stamp
       const downloadUrl = window.URL.createObjectURL(qBlob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -543,7 +539,6 @@
       const origName = resp.headers.get("X-Original-Filename") || ("restored_" + qFile.name.replace(/\.Q$/i, ""));
       const receiptHex = resp.headers.get("X-BMLT-Receipt") || resp.headers.get("X-Receipt") || "";
 
-      // Auto-download restored file
       const downloadUrl = window.URL.createObjectURL(restoredBlob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -553,9 +548,9 @@
       a.remove();
 
       log(`[🏆] SUCCESS: Reconstructed ${restoredBlob.size.toLocaleString()} bytes bit-for-bit!`);
-      log(`    Saved As:     ${origName}`);
-      log(`    Settlement:   ${restoreTx}`);
-      log(`    Receipt Hash: ${receiptHex}`);
+      log(`    Saved As:      ${origName}`);
+      log(`    Settlement:    ${restoreTx}`);
+      log(`    Receipt Hash:  ${receiptHex}`);
     } catch (err) {
       log(`[!] Restore Failed: ${err.message}`);
     } finally {
@@ -563,7 +558,6 @@
     }
   }
 
-  // Ping gateway automatically on initial load
   window.addEventListener("DOMContentLoaded", () => {
     pingGateway();
   });
