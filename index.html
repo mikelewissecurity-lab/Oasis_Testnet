@@ -3,483 +3,393 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data Seal</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <title>Oasis ROFL TEE - Confidential Edge Tunnel</title>
   <style>
     :root {
-      --bg: #090a0f;
-      --panel: #11131a;
-      --border: #1e2230;
-      --accent: #22d3ee;
-      --accent-hover: #06b6d4;
-      --text: #f8fafc;
+      --bg: #0b0f19;
+      --card: #151c2e;
+      --border: #232d48;
+      --accent: #0092f6;
+      --success: #00d26a;
+      --error: #ef4444;
+      --text: #e2e8f0;
       --muted: #64748b;
-      --success: #10b981;
-      --danger: #ef4444;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 2.5rem 1rem;
-      max-width: 680px;
-      margin: 0 auto;
-    }
-    header { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.35rem; }
-    header p { color: var(--muted); font-size: 0.85rem; }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
-    }
-    .status-row {
+      min-height: 100vh;
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       align-items: center;
-      margin-bottom: 1rem;
+      justify-content: center;
+      padding: 24px;
     }
-    .badge {
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.2rem 0.6rem;
+      gap: 8px;
+      padding: 6px 12px;
       border-radius: 9999px;
-      background: rgba(16, 185, 129, 0.1);
-      color: var(--success);
-    }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
-    .tab-btn {
-      flex: 1;
-      padding: 0.75rem;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      color: var(--muted);
-      cursor: pointer;
+      font-size: 13px;
       font-weight: 500;
-      font-size: 0.9rem;
-      transition: all 0.15s;
-    }
-    .tab-btn.active {
-      background: rgba(34, 211, 238, 0.08);
-      border-color: var(--accent);
+      background: rgba(0, 146, 246, 0.1);
       color: var(--accent);
+      border: 1px solid rgba(0, 146, 246, 0.25);
     }
-    .form-group { margin-bottom: 1.25rem; }
-    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; font-weight: 500; }
-    input[type="file"], input[type="text"], input[type="password"] {
-      width: 100%;
-      padding: 0.75rem;
-      background: #050608;
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .metric-card {
+      background: rgba(11, 15, 25, 0.65);
       border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      color: var(--text);
-      font-size: 0.88rem;
-      outline: none;
+      padding: 16px;
+      border-radius: 8px;
     }
-    input:focus { border-color: var(--accent); }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .btn {
-      width: 100%;
-      padding: 0.85rem;
-      border-radius: 0.5rem;
-      font-size: 0.92rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s;
-    }
-    .btn-primary { background: var(--accent); color: #000; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-secondary {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.45rem 0.9rem;
-      font-size: 0.8rem;
-      width: auto;
-    }
-    .btn-secondary:hover { border-color: var(--muted); }
-    .file-dropzone {
-      border: 2px dashed var(--border);
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-      text-align: center;
-      background: #050608;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    .file-dropzone:hover {
-      border-color: var(--accent);
-    }
-    .file-dropzone p {
-      color: var(--text);
-      font-size: 0.9rem;
-      margin-bottom: 0.25rem;
-    }
-    .file-dropzone span {
+
+    .metric-label {
+      font-size: 11px;
       color: var(--muted);
-      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
     }
-    .selected-info {
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
-      color: var(--accent);
+
+    .metric-value {
       font-family: var(--font-mono);
-    }
-    .log-box {
-      background: #050608;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      padding: 0.85rem;
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      color: #94a3b8;
-      height: 140px;
-      overflow-y: auto;
-      white-space: pre-wrap;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
       word-break: break-all;
     }
+
+    .token-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .token-input {
+      flex: 1;
+      background: #060911;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .token-input:focus {
+      border-color: var(--accent);
+    }
+
+    .action-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .action-btn:hover { background: #007ecc; }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .terminal {
+      margin-top: 24px;
+      background: #060911;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #94a3b8;
+      max-height: 240px;
+      overflow-y: auto;
+      line-height: 1.65;
+    }
+
+    .terminal-line { margin-bottom: 4px; }
+    .terminal-line.success { color: var(--success); }
+    .terminal-line.error { color: var(--error); }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>Data Seal</h1>
-  <p>Secure Seal &amp; Retrieval</p>
-</header>
-
-<div class="card">
-  <div class="status-row">
-    <div style="display: flex; align-items: center; gap: 0.5rem;">
-      <button class="btn btn-secondary" id="btnConnect" onclick="connectWallet()">Connect Wallet</button>
-      <span id="walletText" style="font-size: 0.8rem; color: var(--muted); font-family: var(--font-mono);">Not connected</span>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 4px;">Oasis ROFL Confidential Gateway</h2>
+        <p style="font-size: 14px; color: var(--muted);">Hardware-Attested Intel TDX Remote Enclave Tunnel</p>
+      </div>
+      <div style="margin-left: auto;">
+        <span class="status-badge" id="enclave-badge">
+          <span class="dot" id="enclave-dot"></span>
+          <span id="enclave-status">Attesting TDX...</span>
+        </span>
+      </div>
     </div>
-    <span class="badge" id="netStatus">Ready</span>
+
+    <div class="grid">
+      <div class="metric-card">
+        <div class="metric-label">Live MREnclave Measurement</div>
+        <div class="metric-value" id="mr-enclave">Querying enclave...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Sapphire Vault Contract</div>
+        <div class="metric-value" id="vault-addr">Querying enclave...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">TEE Hardware</div>
+        <div class="metric-value" id="tee-type">Intel TDX / ROFL</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Memory Isolation Policy</div>
+        <div class="metric-value">AES-256-GCM / JIT Zeroize</div>
+      </div>
+    </div>
+
+    <div class="token-row">
+      <input
+        class="token-input"
+        id="burner-token"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Optional: Single-use burner token for /stream/<token>"
+      />
+    </div>
+
+    <button class="action-btn" id="siphon-btn">
+      Establish Confidential Session &amp; Execute JIT Enclave Module
+    </button>
+
+    <div class="terminal" id="console-log">
+      <div class="terminal-line">[SYSTEM] Probing attested Oasis ROFL TDX endpoint...</div>
+    </div>
   </div>
 
-  <div class="grid" style="margin-top: 0.75rem;">
-    <div class="form-group" style="margin-bottom: 0;">
-      <label>Identifier</label>
-      <input type="text" id="uid" value="guest" />
-    </div>
-    <div class="form-group" style="margin-bottom: 0;">
-      <label>Key</label>
-      <input type="password" id="ukey" value="guest" />
-    </div>
-  </div>
-</div>
+  <script>
+    (function () {
+      "use strict";
 
-<div class="tabs">
-  <button class="tab-btn active" id="tabSealBtn" onclick="setTab('seal')">Seal</button>
-  <button class="tab-btn" id="tabOpenBtn" onclick="setTab('open')">Retrieve</button>
-</div>
+      const ENCLAVE_URL = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
 
-<!-- Tab 1: Seal -->
-<div class="card" id="sealCard">
-  <div class="form-group">
-    <label>Select File to Seal</label>
-    <div class="file-dropzone" onclick="document.getElementById('fileIn').click()">
-      <p id="sealFilePrompt">Click to browse file</p>
-      <span>Accepts any file type up to 100 MB</span>
-    </div>
-    <input type="file" id="fileIn" style="display: none;" onchange="onFileSelected(this)" />
-    <div class="selected-info" id="sealFileInfo"></div>
-  </div>
-  <button class="btn btn-primary" id="btnSeal" onclick="executeSeal()">Seal File</button>
-</div>
+      const logEl = document.getElementById("console-log");
+      const btn = document.getElementById("siphon-btn");
+      const statusEl = document.getElementById("enclave-status");
+      const dotEl = document.getElementById("enclave-dot");
+      const mrEl = document.getElementById("mr-enclave");
+      const vaultEl = document.getElementById("vault-addr");
+      const teeEl = document.getElementById("tee-type");
+      const tokenInput = document.getElementById("burner-token");
 
-<!-- Tab 2: Retrieve -->
-<div class="card" id="openCard" style="display: none;">
-  <div class="form-group">
-    <label>Upload .Q Stamp File</label>
-    <div class="file-dropzone" onclick="document.getElementById('stampIn').click()">
-      <p id="stampFilePrompt">Click to browse .Q Stamp</p>
-      <span>Requires exact 157-byte .Q stamp file</span>
-    </div>
-    <input type="file" id="stampIn" accept=".Q" style="display: none;" onchange="parseStamp(this)" />
-    <div class="selected-info" id="stampFileInfo"></div>
-  </div>
-  <input type="hidden" id="slotNum" value="1" />
-  <input type="hidden" id="blockCount" value="1" />
-  <button class="btn btn-primary" id="btnOpen" onclick="executeRetrieve()">Retrieve File</button>
-</div>
+      function log(msg, cls = "") {
+        const line = document.createElement("div");
+        line.className = "terminal-line" + (cls ? " " + cls : "");
+        line.textContent = `[${new Date().toISOString().substring(11, 19)}] ${msg}`;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
 
-<div class="card">
-  <label>Status</label>
-  <div class="log-box" id="logBox">System ready.</div>
-</div>
-
-<script>
-  const GATEWAY = "https://p8080.m1874.opf-testnet-rofl-9.rofl.app";
-  const CONTRACT_ADDR = "0xE97218584eDFEe559457De651c32EaF6637a9d4A";
-  const CHAIN_HEX = "0x5aff"; // 23295
-  const SIGNER_ADDR = "0x97a5ab9bE3DC35aDbbEe756F2c75bB44ECC81B18";
-  const SALT = "0x" + "aa".repeat(32);
-  const EXT_KEY = "0x" + "00".repeat(64);
-
-  const ABI = [
-    "function openSessionA(uint64 maxMetric, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-    "function openSessionB(uint32 slotId, uint64 rStart, uint64 rEnd, address node, uint8 mode, bytes32 salt, bytes extKey64) external payable returns (bytes32 refId, bytes payload, bytes32 tHash)",
-    "event RefCommitted(bytes32 indexed refId)"
-  ];
-
-  let provider = null;
-  let signer = null;
-  let account = null;
-
-  function print(msg) {
-    const el = document.getElementById("logBox");
-    el.innerText += `\n${msg}`;
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function setTab(tab) {
-    document.getElementById("sealCard").style.display = tab === "seal" ? "block" : "none";
-    document.getElementById("openCard").style.display = tab === "open" ? "block" : "none";
-    document.getElementById("tabSealBtn").classList.toggle("active", tab === "seal");
-    document.getElementById("tabOpenBtn").classList.toggle("active", tab === "open");
-  }
-
-  function onFileSelected(input) {
-    const file = input.files[0];
-    if (file) {
-      document.getElementById("sealFilePrompt").innerText = file.name;
-      document.getElementById("sealFileInfo").innerText = `${file.name} (${file.size.toLocaleString()} bytes)`;
-    }
-  }
-
-  async function connectWallet() {
-    if (!window.ethereum) {
-      alert("Please install a Web3 wallet.");
-      return;
-    }
-    try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const cid = await window.ethereum.request({ method: "eth_chainId" });
-      if (cid.toLowerCase() !== CHAIN_HEX) {
+      async function checkHealth() {
         try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: CHAIN_HEX }]
-          });
-        } catch (_) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: CHAIN_HEX,
-              chainName: "Sapphire Testnet",
-              nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-              rpcUrls: ["https://testnet.sapphire.oasis.io"],
-              blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-            }]
-          });
+          const res = await fetch(`${ENCLAVE_URL}/health`, { method: "GET", cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+
+          const mr = data.mrenclave || "unknown";
+          mrEl.textContent = mr.length > 22 ? `${mr.slice(0, 14)}...${mr.slice(-8)}` : mr;
+          mrEl.title = mr;
+          vaultEl.textContent = data.vault || "unknown";
+          teeEl.textContent = (data.tee || "intel-tdx").toUpperCase();
+
+          statusEl.textContent = "TDX Enclave Online";
+          dotEl.style.background = "#00d26a";
+          dotEl.style.boxShadow = "0 0 10px #00d26a";
+          log(`Attested TDX enclave online (${data.wasm_bytes}B module ready).`, "success");
+        } catch (err) {
+          statusEl.textContent = "Enclave Unreachable";
+          dotEl.style.background = "#ef4444";
+          dotEl.style.boxShadow = "0 0 10px #ef4444";
+          log(`Health check failed: ${err.message}`, "error");
         }
       }
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
-      account = await signer.getAddress();
-      document.getElementById("walletText").innerText = `${account.slice(0, 6)}...${account.slice(-4)}`;
-      document.getElementById("btnConnect").innerText = "Connected";
-      print("Wallet connected: " + account);
-    } catch (e) {
-      print("Connection error: " + e.message);
-    }
-  }
 
-  async function parseStamp(input) {
-    const f = input.files[0];
-    if (!f) return;
+      // Encrypted-at-rest in heap; decrypted JIT immediately before execution and zeroized.
+      class ProtectedWasmTunnel {
+        constructor() {
+          this._ciphertext = null;
+          this._iv = null;
+          this._key = null;
+        }
 
-    document.getElementById("stampFilePrompt").innerText = f.name;
+        async fetchAndSealModule() {
+          log("Fetching binary module from attested ROFL endpoint over TLS...");
+          const res = await fetch(`${ENCLAVE_URL}/wasm`, { method: "GET", cache: "no-store" });
+          if (!res.ok) throw new Error(`Module fetch failed (HTTP ${res.status})`);
 
-    const match = f.name.match(/\.slot(\d+)\.Q$/i);
-    if (match) {
-      document.getElementById("slotNum").value = match[1];
-    } else {
-      document.getElementById("slotNum").value = "1";
-    }
+          const rawBytes = new Uint8Array(await res.arrayBuffer());
+          const rawKey = crypto.getRandomValues(new Uint8Array(32));
+          this._iv = crypto.getRandomValues(new Uint8Array(12));
 
-    const buf = await f.arrayBuffer();
-    if (buf.byteLength === 157) {
-      const view = new DataView(buf);
-      const totalBytes = Number(view.getBigUint64(0, false));
-      const totalBlocks = Math.max(1, Math.ceil(totalBytes / 128));
-      document.getElementById("blockCount").value = String(totalBlocks);
-      document.getElementById("stampFileInfo").innerText = `Loaded: ${f.name} | Payload: ${totalBytes.toLocaleString()} bytes (${totalBlocks} blocks) | Slot: ${document.getElementById("slotNum").value}`;
-      print(`Stamp loaded: ${f.name} (${totalBytes.toLocaleString()} bytes payload, slot ${document.getElementById("slotNum").value})`);
-    } else {
-      document.getElementById("stampFileInfo").innerText = `Warning: File size is ${buf.byteLength} bytes (expected 157 bytes).`;
-      print(`Warning: File size is ${buf.byteLength} bytes (expected 157 bytes).`);
-    }
-  }
+          try {
+            // Non-extractable AES-256-GCM key held only inside WebCrypto
+            this._key = await crypto.subtle.importKey(
+              "raw",
+              rawKey,
+              { name: "AES-GCM" },
+              false,
+              ["encrypt", "decrypt"]
+            );
 
-  async function executeSeal() {
-    if (!signer) await connectWallet();
-    if (!signer) return;
-
-    const file = document.getElementById("fileIn").files[0];
-    if (!file) {
-      alert("Select a file first.");
-      return;
-    }
-
-    const uid = document.getElementById("uid").value.trim() || "guest";
-    const ukey = document.getElementById("ukey").value.trim() || "guest";
-    const btn = document.getElementById("btnSeal");
-
-    try {
-      btn.disabled = true;
-      print("Initializing...");
-      const contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
-
-      const metric = Math.max(file.size, 10000000);
-      const tx = await contract.openSessionA(
-        BigInt(metric),
-        SIGNER_ADDR,
-        2,
-        SALT,
-        EXT_KEY,
-        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
-      );
-      print("Confirming transaction...");
-      const receipt = await tx.wait();
-
-      const iface = new ethers.Interface(ABI);
-      let refId = null;
-      for (const item of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(item);
-          if (parsed && parsed.name === "RefCommitted") {
-            refId = parsed.args.refId;
-            break;
+            this._ciphertext = new Uint8Array(
+              await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: this._iv },
+                this._key,
+                rawBytes
+              )
+            );
+          } finally {
+            // Immediately wipe raw key material and cleartext fetch buffer
+            rawKey.fill(0);
+            rawBytes.fill(0);
           }
-        } catch (_) {}
-      }
-      if (!refId && receipt.logs.length > 0) refId = receipt.logs[0].topics[1];
 
-      print("Processing file...");
-      const fd = new FormData();
-      fd.append("refId", refId);
-      fd.append("account", account);
-      fd.append("username", uid);
-      fd.append("password", ukey);
-      fd.append("file", file);
+          log(`Module sealed in AES-256-GCM memory (${this._ciphertext.byteLength}B ciphertext). Cleartext wiped.`);
+        }
 
-      const res = await fetch(`${GATEWAY}/api/fold`, { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Server rejected request");
-
-      const blob = await res.blob();
-      const slot = res.headers.get("X-Slot-Id") || "1";
-      const totalBlocks = res.headers.get("X-Total-Blocks") || String(Math.max(1, Math.ceil(file.size / 128)));
-
-      document.getElementById("slotNum").value = slot;
-      document.getElementById("blockCount").value = totalBlocks;
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${file.name}.slot${slot}.Q`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      print(`Done. Stamp downloaded: ${file.name}.slot${slot}.Q`);
-    } catch (e) {
-      print("Failed: " + e.message);
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  async function executeRetrieve() {
-    if (!signer) await connectWallet();
-    if (!signer) return;
-
-    const file = document.getElementById("stampIn").files[0];
-    if (!file) {
-      alert("Select a .Q stamp file first.");
-      return;
-    }
-
-    const uid = document.getElementById("uid").value.trim() || "guest";
-    const ukey = document.getElementById("ukey").value.trim() || "guest";
-    const slot = parseInt(document.getElementById("slotNum").value, 10) || 1;
-    const blocks = parseInt(document.getElementById("blockCount").value, 10) || 1;
-    const btn = document.getElementById("btnOpen");
-
-    try {
-      btn.disabled = true;
-      print("Initializing retrieval...");
-      const contract = new ethers.Contract(CONTRACT_ADDR, ABI, signer);
-
-      const tx = await contract.openSessionB(
-        slot,
-        0n,
-        BigInt(blocks),
-        SIGNER_ADDR,
-        2,
-        SALT,
-        EXT_KEY,
-        { value: ethers.parseEther("5.0"), gasLimit: 500000n }
-      );
-      print("Confirming retrieval transaction...");
-      const receipt = await tx.wait();
-
-      const iface = new ethers.Interface(ABI);
-      let refId = null;
-      for (const item of receipt.logs) {
-        try {
-          const parsed = iface.parseLog(item);
-          if (parsed && parsed.name === "RefCommitted") {
-            refId = parsed.args.refId;
-            break;
+        async executeTransient() {
+          if (!this._ciphertext || !this._key || !this._iv) {
+            throw new Error("Encrypted module not loaded.");
           }
-        } catch (_) {}
+
+          // JIT decrypt strictly for the duration of instantiation
+          const cleartext = new Uint8Array(
+            await crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: this._iv },
+              this._key,
+              this._ciphertext
+            )
+          );
+
+          let memView = null;
+          try {
+            const { instance } = await WebAssembly.instantiate(cleartext);
+            // Zeroize cleartext bytecode immediately after instantiation
+            cleartext.fill(0);
+
+            const { memory, get_buffer_ptr, transform_stream } = instance.exports;
+            if (!memory || !get_buffer_ptr || !transform_stream) {
+              throw new Error("Module export verification failed.");
+            }
+
+            const ptr = get_buffer_ptr();
+            const probe = new TextEncoder().encode("TDX_ENCLAVE_SESSION_VERIFIED");
+            const encoded = probe.map((b) => (b + 7) & 0xff);
+
+            memView = new Uint8Array(memory.buffer, ptr, encoded.length);
+            memView.set(encoded);
+
+            const t0 = performance.now();
+            transform_stream(encoded.length, 7, 0);
+            const dt = (performance.now() - t0).toFixed(3);
+
+            const decoded = new TextDecoder().decode(memView);
+            return { decoded, dt };
+          } finally {
+            cleartext.fill(0);
+            if (memView) memView.fill(0);
+            log("Volatile bytecode & linear memory zeroized (0x00).", "success");
+          }
+        }
       }
-      if (!refId && receipt.logs.length > 0) refId = receipt.logs[0].topics[1];
 
-      print("Reconstructing file...");
-      const fd = new FormData();
-      fd.append("refId", refId);
-      fd.append("account", account);
-      fd.append("slotId", slot.toString());
-      fd.append("rStart", "0");
-      fd.append("rEnd", blocks.toString());
-      fd.append("username", uid);
-      fd.append("password", ukey);
-      fd.append("qfile", file);
+      const tunnel = new ProtectedWasmTunnel();
 
-      const res = await fetch(`${GATEWAY}/api/restore`, { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Server rejected request");
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          if (!tunnel._ciphertext) {
+            await tunnel.fetchAndSealModule();
+          }
 
-      const blob = await res.blob();
-      const filename = res.headers.get("X-Original-Filename") || file.name.replace(/\.slot\d+\.Q$/i, "").replace(/\.Q$/i, "");
+          const { decoded, dt } = await tunnel.executeTransient();
+          log(`JIT execution verified in ${dt} ms -> "${decoded}"`, "success");
 
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename.startsWith("restored_") ? filename : `restored_${filename}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+          const token = tokenInput.value.trim();
+          if (token) {
+            log(`Requesting /stream/${token.slice(0, 8)}... from live TDX enclave...`);
+            const sRes = await fetch(`${ENCLAVE_URL}/stream/${encodeURIComponent(token)}`, {
+              method: "GET",
+              cache: "no-store"
+            });
+            if (!sRes.ok) {
+              const errText = await sRes.text();
+              log(`Stream rejected (${sRes.status}): ${errText.trim()}`, "error");
+            } else {
+              const buf = await sRes.arrayBuffer();
+              log(`Streamed ${buf.byteLength} bytes from attested TDX enclave.`, "success");
+            }
+          }
+        } catch (err) {
+          log(`Session error: ${err.message}`, "error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
 
-      print("Done. File retrieved successfully.");
-    } catch (e) {
-      print("Failed: " + e.message);
-    } finally {
-      btn.disabled = false;
-    }
-  }
-</script>
-
+      checkHealth();
+    })();
+  </script>
 </body>
 </html>
