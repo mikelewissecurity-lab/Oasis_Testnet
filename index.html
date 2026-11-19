@@ -1,590 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Oasis ROFL TEE - Confidential Vault Gateway</title>
-  <style>
-    :root {
-      --bg: #0b0f19;
-      --card: #151c2e;
-      --panel: #0e1424;
-      --border: #232d48;
-      --accent: #0092f6;
-      --success: #00d26a;
-      --error: #ef4444;
-      --text: #e2e8f0;
-      --muted: #64748b;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 28px 16px;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 760px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 28px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
-      height: fit-content;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 18px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 600;
-      background: rgba(0, 146, 246, 0.1);
-      color: var(--accent);
-      border: 1px solid rgba(0, 146, 246, 0.25);
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 10px var(--accent);
-    }
-
-    .wallet-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .wallet-info {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .wallet-info strong { color: var(--text); }
-
-    .wallet-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .btn-sm {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 7px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .btn-sm.secondary {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    .btn-sm:hover { opacity: 0.9; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    @media (max-width: 600px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-
-    .metric-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      padding: 12px 14px;
-      border-radius: 8px;
-    }
-
-    .metric-label {
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    .metric-value {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text);
-      word-break: break-all;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 12px;
-    }
-
-    .tab-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 9px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .tab-btn.active {
-      background: rgba(0, 146, 246, 0.15);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    .field { margin-bottom: 14px; }
-    .field label {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .input {
-      width: 100%;
-      background: #060911;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 11px 12px;
-      color: var(--text);
-      font-family: var(--font-mono);
-      font-size: 13px;
-      outline: none;
-    }
-
-    .input:focus { border-color: var(--accent); }
-
-    .action-btn {
-      width: 100%;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 13px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .action-btn:hover { background: #007ecc; }
-    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .terminal {
-      margin-top: 20px;
-      background: #060911;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: #94a3b8;
-      max-height: 210px;
-      overflow-y: auto;
-      line-height: 1.6;
-    }
-
-    .terminal-line { margin-bottom: 4px; }
-    .terminal-line.success { color: var(--success); }
-    .terminal-line.error { color: var(--error); }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div>
-        <h2 style="font-size: 19px; font-weight: 600; margin-bottom: 3px;">Oasis ROFL Confidential Vault</h2>
-        <p style="font-size: 13px; color: var(--muted);">Intel TDX Attested Enclave &bull; 157-Byte .Q Container Gateway</p>
-      </div>
-      <span class="status-badge">
-        <span class="dot" id="enclave-dot"></span>
-        <span id="enclave-status">Attesting TDX...</span>
-      </span>
-    </div>
-
-    <div class="wallet-bar">
-      <div class="wallet-info" id="wallet-info">
-        Wallet: <strong>Not Connected</strong> &bull; Network: Sapphire Testnet (0x5aff)
-      </div>
-      <div class="wallet-actions">
-        <button class="btn-sm" id="connect-wallet-btn">Connect Wallet</button>
-        <a class="btn-sm secondary" href="https://faucet.testnet.oasis.io/" target="_blank" rel="noopener">Get TEST Tokens</a>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="metric-card">
-        <div class="metric-label">Live MREnclave</div>
-        <div class="metric-value" id="mr-enclave">Querying...</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Sapphire Vault Contract</div>
-        <div class="metric-value" id="vault-addr">Querying...</div>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="upload">1. Seal File &rarr; .Q</button>
-      <button class="tab-btn" data-tab="materialize">2. Restore .Q &rarr; File</button>
-      <button class="tab-btn" data-tab="append">3. Append to .Q</button>
-    </div>
-
-    <!-- TAB 1: UPLOAD / SEAL -->
-    <div class="panel active" id="panel-upload">
-      <div class="field">
-        <label>Select File to Seal into a 157-Byte .Q Container</label>
-        <input class="input" type="file" id="upload-file" />
-      </div>
-      <div class="field">
-        <label>Virtual Path (X-VFS-Path)</label>
-        <input class="input" type="text" id="upload-path" value="/vault/data.bin" />
-      </div>
-      <div class="field">
-        <label>Optional Password (X-Password)</label>
-        <input class="input" type="password" id="upload-pass" placeholder="Leave blank for open container" />
-      </div>
-      <button class="action-btn" id="btn-upload">Seal &amp; Download .Q File</button>
-    </div>
-
-    <!-- TAB 2: MATERIALIZE / RESTORE -->
-    <div class="panel" id="panel-materialize">
-      <div class="field">
-        <label>Select .Q Container File</label>
-        <input class="input" type="file" id="mat-file" accept=".Q,.q" />
-      </div>
-      <div class="field">
-        <label>Virtual Path to Restore (X-VFS-Path)</label>
-        <input class="input" type="text" id="mat-path" value="/vault/data.bin" />
-      </div>
-      <div class="field">
-        <label>Password (if sealed with one)</label>
-        <input class="input" type="password" id="mat-pass" placeholder="Optional password" />
-      </div>
-      <button class="action-btn" id="btn-materialize">Materialize &amp; Download Original File</button>
-    </div>
-
-    <!-- TAB 3: APPEND -->
-    <div class="panel" id="panel-append">
-      <div class="field">
-        <label>Existing .Q Container</label>
-        <input class="input" type="file" id="app-q-file" accept=".Q,.q" />
-      </div>
-      <div class="field">
-        <label>Additional File to Append</label>
-        <input class="input" type="file" id="app-new-file" />
-      </div>
-      <div class="field">
-        <label>Virtual Path for New File (X-VFS-Path)</label>
-        <input class="input" type="text" id="app-path" value="/vault/extra.bin" />
-      </div>
-      <div class="field">
-        <label>Password (if sealed with one)</label>
-        <input class="input" type="password" id="app-pass" placeholder="Optional password" />
-      </div>
-      <button class="action-btn" id="btn-append">Append &amp; Download Updated .Q</button>
-    </div>
-
-    <div class="terminal" id="console-log">
-      <div class="terminal-line">[SYSTEM] Initializing Oasis ROFL TDX gateway...</div>
-    </div>
+<div id="hz-shell" style="font-family:monospace;background:#0a0e17;color:#e2e8f0;padding:16px;border-radius:10px;">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+    <button id="hz-launch" style="background:#00ffcc;color:#041014;border:none;padding:10px 16px;border-radius:6px;font-weight:700;cursor:pointer;">
+      Connect Wallet &amp; Pay TEST to Launch Vault
+    </button>
+    <a href="https://faucet.testnet.oasis.io/?paratime=sapphire" target="_blank" rel="noopener"
+       style="color:#00ffcc;font-size:12px;">Get Sapphire TEST Faucet</a>
   </div>
+  <div id="hz-msg" style="font-size:13px;color:#8b9bb4;margin-bottom:10px;">Idle — connect MetaMask on Sapphire Testnet.</div>
+  <iframe id="hz-frame" style="display:none;width:100%;height:820px;border:1px solid #1f293d;border-radius:8px;" allow="clipboard-write"></iframe>
+</div>
 
-  <script>
-    (function () {
-      "use strict";
+<script type="module">
+  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
 
-      const ENCLAVE_URL = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
-      const SAPPHIRE_TESTNET = {
-        chainId: "0x5aff",
-        chainName: "Oasis Sapphire Testnet",
-        nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-        rpcUrls: ["https://testnet.sapphire.oasis.io"],
-        blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-      };
+  const REGISTRY_ADDR = "0xE5F62b7e51fe92D8F310F3070b6888D1AC6cFbee";
+  const ENCLAVE_URL   = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
+  const SAPPHIRE_TEST = {
+    chainId: "0x5aff",
+    chainName: "Oasis Sapphire Testnet",
+    nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
+    rpcUrls: ["https://testnet.sapphire.oasis.io"],
+    blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
+  };
+  const REGISTRY_ABI = [
+    "function unitFee() external view returns (uint256)",
+    "function openSession(bytes32 recordId, uint64 ttlSeconds) external payable returns (bytes32)"
+  ];
 
-      const logEl = document.getElementById("console-log");
-      const statusEl = document.getElementById("enclave-status");
-      const dotEl = document.getElementById("enclave-dot");
-      const mrEl = document.getElementById("mr-enclave");
-      const vaultEl = document.getElementById("vault-addr");
-      const walletInfo = document.getElementById("wallet-info");
-      const connectBtn = document.getElementById("connect-wallet-btn");
+  const msgEl   = document.getElementById("hz-msg");
+  const frameEl = document.getElementById("hz-frame");
 
-      function log(msg, cls = "") {
-        const line = document.createElement("div");
-        line.className = "terminal-line" + (cls ? " " + cls : "");
-        line.textContent = `[${new Date().toISOString().substring(11, 19)}] ${msg}`;
-        logEl.appendChild(line);
-        logEl.scrollTop = logEl.scrollHeight;
-      }
+  async function switchSapphire() {
+    if (!window.ethereum) throw new Error("MetaMask not detected.");
+    try {
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SAPPHIRE_TEST.chainId }] });
+    } catch (e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({ method: "wallet_addEthereumChain", params: [SAPPHIRE_TEST] });
+      } else throw e;
+    }
+  }
 
-      function downloadBlob(bytes, filename) {
-        const blob = new Blob([bytes], { type: "application/octet-stream" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-
-      // Tabs
-      document.querySelectorAll(".tab-btn").forEach((b) => {
-        b.addEventListener("click", () => {
-          document.querySelectorAll(".tab-btn").forEach((x) => x.classList.remove("active"));
-          document.querySelectorAll(".panel").forEach((x) => x.classList.remove("active"));
-          b.classList.add("active");
-          document.getElementById("panel-" + b.dataset.tab).classList.add("active");
-        });
-      });
-
-      // Encrypted-at-rest WASM runtime (JIT decrypt -> execute -> zeroize)
-      class ProtectedWasmTunnel {
-        constructor() { this._ct = null; this._iv = null; this._key = null; }
-        async sealFromEnclave() {
-          const res = await fetch(`${ENCLAVE_URL}/wasm`, { cache: "no-store" });
-          if (!res.ok) throw new Error(`WASM HTTP ${res.status}`);
-          const raw = new Uint8Array(await res.arrayBuffer());
-          const rawKey = crypto.getRandomValues(new Uint8Array(32));
-          this._iv = crypto.getRandomValues(new Uint8Array(12));
-          try {
-            this._key = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-            this._ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: this._iv }, this._key, raw));
-          } finally {
-            rawKey.fill(0);
-            raw.fill(0);
-          }
+  async function waitForEnclaveWake() {
+    for (let i = 1; i <= 30; i++) {
+      try {
+        const r = await fetch(`${ENCLAVE_URL}/health`, { cache: "no-store" });
+        if (r.ok) {
+          const j = await r.json();
+          if (j.status === "ok") return j;
         }
-        async verifyJIT() {
-          if (!this._ct) await this.sealFromEnclave();
-          const clear = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: this._iv }, this._key, this._ct));
-          let view = null;
-          try {
-            const { instance } = await WebAssembly.instantiate(clear);
-            clear.fill(0);
-            const { memory, get_buffer_ptr, transform_stream } = instance.exports;
-            const probe = new TextEncoder().encode("OK");
-            const enc = probe.map((b) => (b + 7) & 0xff);
-            view = new Uint8Array(memory.buffer, get_buffer_ptr(), enc.length);
-            view.set(enc);
-            transform_stream(enc.length, 7, 0);
-          } finally {
-            clear.fill(0);
-            if (view) view.fill(0);
-          }
-        }
-      }
+      } catch (_) {}
+      msgEl.textContent = `Waiting for Intel TDX enclave to wake... (${i * 3}s)`;
+      await new Promise(res => setTimeout(res, 3000));
+    }
+    throw new Error("Enclave wake timeout (90s).");
+  }
 
-      const wasmTunnel = new ProtectedWasmTunnel();
+  document.getElementById("hz-launch").onclick = async () => {
+    try {
+      msgEl.textContent = "Connecting MetaMask to Oasis Sapphire Testnet...";
+      await switchSapphire();
 
-      // Wallet Connect (MetaMask -> Oasis Sapphire Testnet)
-      connectBtn.addEventListener("click", async () => {
-        if (!window.ethereum) {
-          log("MetaMask not detected. Install MetaMask to connect.", "error");
-          return;
-        }
-        try {
-          const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-          try {
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: SAPPHIRE_TESTNET.chainId }]
-            });
-          } catch (switchErr) {
-            if (switchErr.code === 4902) {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [SAPPHIRE_TESTNET]
-              });
-            }
-          }
-          const addr = accounts[0];
-          const balHex = await window.ethereum.request({ method: "eth_getBalance", params: [addr, "latest"] });
-          const bal = (Number(BigInt(balHex)) / 1e18).toFixed(4);
-          walletInfo.innerHTML = `Wallet: <strong>${addr.slice(0, 6)}...${addr.slice(-4)}</strong> &bull; Balance: <strong>${bal} TEST</strong>`;
-          connectBtn.textContent = "Connected";
-          log(`Connected to Sapphire Testnet (${addr.slice(0, 10)}..., ${bal} TEST).`, "success");
-        } catch (err) {
-          log(`Wallet connection failed: ${err.message}`, "error");
-        }
-      });
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer   = await provider.getSigner();
+      const reg      = new ethers.Contract(REGISTRY_ADDR, REGISTRY_ABI, signer);
 
-      // Health Check
-      async function checkHealth() {
-        try {
-          const res = await fetch(`${ENCLAVE_URL}/health`, { cache: "no-store" });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const d = await res.json();
-          const mr = d.mrenclave || "unknown";
-          mrEl.textContent = mr.length > 22 ? `${mr.slice(0, 14)}...${mr.slice(-8)}` : mr;
-          mrEl.title = mr;
-          vaultEl.textContent = d.vault || "unknown";
-          statusEl.textContent = "TDX Enclave Online";
-          dotEl.style.background = "#00d26a";
-          dotEl.style.boxShadow = "0 0 10px #00d26a";
-          await wasmTunnel.sealFromEnclave();
-          log(`TDX online. ${d.wasm_bytes}B WASM sealed in AES-256-GCM memory.`, "success");
-        } catch (err) {
-          statusEl.textContent = "Enclave Unreachable";
-          dotEl.style.background = "#ef4444";
-          log(`Enclave health check failed: ${err.message}`, "error");
-        }
-      }
+      const fee = await reg.unitFee();
+      msgEl.textContent = `Sending ${ethers.formatEther(fee)} TEST to ServiceRegistry.openSession()...`;
+      const tx = await reg.openSession(ethers.ZeroHash, 3600, { value: fee });
+      await tx.wait();
 
-      // 1. POST /upload -> Download 157-byte .Q
-      document.getElementById("btn-upload").addEventListener("click", async (e) => {
-        const file = document.getElementById("upload-file").files[0];
-        if (!file) return log("Select a file to seal first.", "error");
-        const vfsPath = document.getElementById("upload-path").value.trim() || `/${file.name}`;
-        const pass = document.getElementById("upload-pass").value;
+      const health = await waitForEnclaveWake();
+      msgEl.textContent = `Online (${health.tee} | WASM ${health.wasm_bytes}B). Loaded directly from ROFL enclave.`;
 
-        e.target.disabled = true;
-        try {
-          await wasmTunnel.verifyJIT();
-          log(`Sealing "${file.name}" (${file.size} bytes) inside TDX enclave...`);
-          const headers = { "X-VFS-Path": vfsPath };
-          if (pass) headers["X-Password"] = pass;
-
-          const res = await fetch(`${ENCLAVE_URL}/upload`, {
-            method: "POST",
-            headers,
-            body: await file.arrayBuffer()
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status} (${res.headers.get("X-Error-Code") || "error"})`);
-          const qBytes = new Uint8Array(await res.arrayBuffer());
-          downloadBlob(qBytes, `${file.name}.Q`);
-          log(`Sealed! Downloaded ${file.name}.Q (${qBytes.byteLength} bytes).`, "success");
-        } catch (err) {
-          log(`Seal failed: ${err.message}`, "error");
-        } finally {
-          e.target.disabled = false;
-        }
-      });
-
-      // 2. POST /materialize -> Restore original file
-      document.getElementById("btn-materialize").addEventListener("click", async (e) => {
-        const qFile = document.getElementById("mat-file").files[0];
-        if (!qFile) return log("Select a .Q file first.", "error");
-        const vfsPath = document.getElementById("mat-path").value.trim() || "/vault/data.bin";
-        const pass = document.getElementById("mat-pass").value;
-
-        e.target.disabled = true;
-        try {
-          await wasmTunnel.verifyJIT();
-          log(`Materializing "${vfsPath}" from ${qFile.name}...`);
-          const headers = { "X-VFS-Path": vfsPath };
-          if (pass) headers["X-Password"] = pass;
-
-          const res = await fetch(`${ENCLAVE_URL}/materialize`, {
-            method: "POST",
-            headers,
-            body: await qFile.arrayBuffer()
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status} (${res.headers.get("X-Error-Code") || "denied"})`);
-          const restored = new Uint8Array(await res.arrayBuffer());
-          const outName = vfsPath.split("/").pop() || "restored.bin";
-          downloadBlob(restored, outName);
-          log(`Materialized ${outName} (${restored.byteLength} bytes) from .Q container.`, "success");
-        } catch (err) {
-          log(`Materialize failed: ${err.message}`, "error");
-        } finally {
-          e.target.disabled = false;
-        }
-      });
-
-      // 3. POST /append -> Merge new file into existing .Q
-      document.getElementById("btn-append").addEventListener("click", async (e) => {
-        const qFile = document.getElementById("app-q-file").files[0];
-        const newFile = document.getElementById("app-new-file").files[0];
-        if (!qFile || !newFile) return log("Select both an existing .Q file and a new file.", "error");
-        const vfsPath = document.getElementById("app-path").value.trim() || `/${newFile.name}`;
-        const pass = document.getElementById("app-pass").value;
-
-        e.target.disabled = true;
-        try {
-          await wasmTunnel.verifyJIT();
-          const qBuf = new Uint8Array(await qFile.arrayBuffer());
-          const fBuf = new Uint8Array(await newFile.arrayBuffer());
-          const framed = new Uint8Array(4 + qBuf.byteLength + fBuf.byteLength);
-          new DataView(framed.buffer).setUint32(0, qBuf.byteLength, false);
-          framed.set(qBuf, 4);
-          framed.set(fBuf, 4 + qBuf.byteLength);
-
-          log(`Appending "${newFile.name}" into ${qFile.name} inside TDX...`);
-          const headers = { "X-VFS-Path": vfsPath };
-          if (pass) headers["X-Password"] = pass;
-
-          const res = await fetch(`${ENCLAVE_URL}/append`, {
-            method: "POST",
-            headers,
-            body: framed
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const updatedQ = new Uint8Array(await res.arrayBuffer());
-          downloadBlob(updatedQ, qFile.name);
-          log(`Appended! Downloaded updated ${qFile.name} (${updatedQ.byteLength} bytes).`, "success");
-        } catch (err) {
-          log(`Append failed: ${err.message}`, "error");
-        } finally {
-          e.target.disabled = false;
-        }
-      });
-
-      checkHealth();
-    })();
-  </script>
-</body>
-</html>
+      // Enclave serves its own HTML + SIMD128 WASM directly — Render never touches the WASM
+      frameEl.src = `${ENCLAVE_URL}/`;
+      frameEl.style.display = "block";
+    } catch (err) {
+      msgEl.textContent = `Error: ${err.shortMessage || err.message}`;
+    }
+  };
+</script>
