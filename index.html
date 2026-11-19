@@ -1,47 +1,145 @@
-<div id="hz-shell" style="font-family:monospace;background:#0a0e17;color:#e2e8f0;padding:16px;border-radius:10px;">
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-    <button id="hz-launch" style="background:#00ffcc;color:#041014;border:none;padding:10px 16px;border-radius:6px;font-weight:700;cursor:pointer;">
-      Connect Wallet &amp; Pay TEST to Launch Vault
-    </button>
-    <a href="https://faucet.testnet.oasis.io/?paratime=sapphire" target="_blank" rel="noopener"
-       style="color:#00ffcc;font-size:12px;">Get Sapphire TEST Faucet</a>
-  </div>
-  <div id="hz-msg" style="font-size:13px;color:#8b9bb4;margin-bottom:10px;">Idle — connect MetaMask on Sapphire Testnet.</div>
-  <iframe id="hz-frame" style="display:none;width:100%;height:820px;border:1px solid #1f293d;border-radius:8px;" allow="clipboard-write"></iframe>
-</div>
-
-<script type="module">
-  import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
-
-  const REGISTRY_ADDR = "0xE5F62b7e51fe92D8F310F3070b6888D1AC6cFbee";
-  const ENCLAVE_URL   = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
-  const SAPPHIRE_TEST = {
-    chainId: "0x5aff",
-    chainName: "Oasis Sapphire Testnet",
-    nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
-    rpcUrls: ["https://testnet.sapphire.oasis.io"],
-    blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
-  };
-  const REGISTRY_ABI = [
-    "function unitFee() external view returns (uint256)"
-  ];
-
-  const msgEl   = document.getElementById("hz-msg");
-  const frameEl = document.getElementById("hz-frame");
-
-  async function switchSapphire() {
-    if (!window.ethereum) throw new Error("MetaMask not detected.");
-    try {
-      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SAPPHIRE_TEST.chainId }] });
-    } catch (e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({ method: "wallet_addEthereumChain", params: [SAPPHIRE_TEST] });
-      } else throw e;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infinite Data Vault</title>
+  <style>
+    :root {
+      --bg: #060911;
+      --panel: #0d1424;
+      --border: #1e2a40;
+      --accent: #00e5ff;
+      --ok: #22c55e;
+      --muted: #7c8da6;
+      --text: #e6edf7;
     }
-  }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.25rem;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    .shell { max-width: 1080px; margin: 0 auto; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1.1rem;
+      margin-bottom: 0.85rem;
+    }
+    .brand { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; }
+    .actions { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+    button {
+      background: var(--accent);
+      color: #041016;
+      border: none;
+      border-radius: 6px;
+      padding: 0.55rem 1rem;
+      font-weight: 700;
+      font-size: 0.84rem;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    a.faucet {
+      color: var(--accent);
+      font-size: 0.82rem;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+    }
+    a.faucet:hover { border-color: var(--accent); }
+    .status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0 0 0.85rem 0.15rem;
+    }
+    .status.ok { color: var(--ok); }
+    #idv-frame {
+      display: none;
+      width: 100%;
+      height: 880px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #080c14;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">Infinite Data Vault</div>
+      <div class="actions">
+        <span id="wallet-info" style="font-size:0.8rem;color:#7c8da6;">Not connected</span>
+        <button id="btn-launch">Connect Wallet &amp; Open Vault</button>
+        <a class="faucet" href="https://faucet.testnet.oasis.io/?paratime=sapphire" target="_blank" rel="noopener">
+          Get Sapphire TEST
+        </a>
+      </div>
+    </div>
 
-  async function waitForEnclaveWake() {
-    for (let i = 1; i <= 30; i++) {
+    <div id="status" class="status">Connect MetaMask on Oasis Sapphire Testnet to open your vault.</div>
+    <iframe id="idv-frame" allow="clipboard-write"></iframe>
+  </div>
+
+  <script type="module">
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
+
+    const REGISTRY_ADDR = "0xE5F62b7e51fe92D8F310F3070b6888D1AC6cFbee";
+    const ENCLAVE_URL   = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
+    const SAPPHIRE_TEST = {
+      chainId: "0x5aff", // 23295
+      chainName: "Oasis Sapphire Testnet",
+      nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
+      rpcUrls: ["https://testnet.sapphire.oasis.io"],
+      blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
+    };
+
+    const statusEl = document.getElementById("status");
+    const walletEl = document.getElementById("wallet-info");
+    const launchBtn = document.getElementById("btn-launch");
+    const frameEl = document.getElementById("idv-frame");
+
+    function setStatus(text, isOk = false) {
+      statusEl.textContent = text;
+      statusEl.className = isOk ? "status ok" : "status";
+    }
+
+    async function switchSapphire() {
+      if (!window.ethereum) throw new Error("MetaMask not detected.");
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: SAPPHIRE_TEST.chainId }]
+        });
+      } catch (e) {
+        if (e.code === 4902) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [SAPPHIRE_TEST]
+          });
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    async function refreshWalletInfo(provider, addr) {
+      const bal = await provider.getBalance(addr);
+      const shortAddr = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+      walletEl.textContent = `${shortAddr} (${Number(ethers.formatEther(bal)).toFixed(2)} TEST)`;
+    }
+
+    async function probeHealth() {
       try {
         const r = await fetch(`${ENCLAVE_URL}/health`, { cache: "no-store" });
         if (r.ok) {
@@ -49,37 +147,81 @@
           if (j.status === "ok") return j;
         }
       } catch (_) {}
-      msgEl.textContent = `Waiting for Intel TDX enclave to wake... (${i * 3}s)`;
-      await new Promise(res => setTimeout(res, 3000));
+      return null;
     }
-    throw new Error("Enclave wake timeout (90s).");
-  }
 
-  document.getElementById("hz-launch").onclick = async () => {
-    try {
-      msgEl.textContent = "Connecting MetaMask to Oasis Sapphire Testnet...";
-      await switchSapphire();
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer   = await provider.getSigner();
-      const reg      = new ethers.Contract(REGISTRY_ADDR, REGISTRY_ABI, provider);
-
-      let fee = await reg.unitFee();
-      if (fee === 0n) fee = ethers.parseEther("0.01");
-
-      msgEl.textContent = `Sending ${ethers.formatEther(fee)} TEST to fund/wake enclave...`;
-      // Hits ServiceRegistry.receive() -> adds to pendingBalance & calls _trySyncBilling()
-      const tx = await signer.sendTransaction({ to: REGISTRY_ADDR, value: fee });
-      msgEl.textContent = `Tx sent (${tx.hash.slice(0, 10)}...). Waiting for confirmation...`;
-      await tx.wait();
-
-      const health = await waitForEnclaveWake();
-      msgEl.textContent = `Funded & online (${health.tee} | WASM ${health.wasm_bytes}B). Loaded directly from ROFL enclave.`;
-
-      frameEl.src = `${ENCLAVE_URL}/`;
-      frameEl.style.display = "block";
-    } catch (err) {
-      msgEl.textContent = `Error: ${err.shortMessage || err.message}`;
+    async function waitForEnclaveWake() {
+      for (let i = 1; i <= 30; i++) {
+        const h = await probeHealth();
+        if (h) return h;
+        setStatus(`Waiting for vault node to wake... (${i * 3}s)`);
+        await new Promise((res) => setTimeout(res, 3000));
+      }
+      throw new Error("Vault wake timeout (90s).");
     }
-  };
-</script>
+
+    // Bridge: handles 1 TEST open & N TEST batch payments requested by the enclave iframe
+    window.addEventListener("message", async (ev) => {
+      if (ev.origin !== ENCLAVE_URL || ev.data?.type !== "IDV_PAY") return;
+      const { reqId, amountTest, to, reason } = ev.data;
+      try {
+        await switchSapphire();
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const addr = await signer.getAddress();
+
+        setStatus(`Confirm ${amountTest} TEST in MetaMask (${reason || "Vault action"})...`);
+        const tx = await signer.sendTransaction({
+          to: to || REGISTRY_ADDR,
+          value: ethers.parseEther(String(amountTest))
+        });
+        setStatus(`Tx ${tx.hash.slice(0, 10)}... sent. Waiting for confirmation...`);
+        await tx.wait();
+        await refreshWalletInfo(provider, addr);
+
+        setStatus(`Confirmed ${amountTest} TEST (${tx.hash.slice(0, 10)}...).`, true);
+        frameEl.contentWindow.postMessage({ type: "IDV_PAID", reqId, txHash: tx.hash }, ENCLAVE_URL);
+      } catch (err) {
+        const msg = err.shortMessage || err.message || "Payment cancelled";
+        setStatus(`Payment error: ${msg}`);
+        frameEl.contentWindow.postMessage({ type: "IDV_PAY_ERR", reqId, error: msg }, ENCLAVE_URL);
+      }
+    });
+
+    launchBtn.onclick = async () => {
+      launchBtn.disabled = true;
+      try {
+        setStatus("Connecting MetaMask to Oasis Sapphire Testnet...");
+        await switchSapphire();
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const addr = await signer.getAddress();
+        await refreshWalletInfo(provider, addr);
+
+        // If node is already awake, mount immediately; if asleep, send 1 TEST to wake it
+        let health = await probeHealth();
+        if (!health) {
+          setStatus("Vault node is asleep. Confirm 1 TEST to wake it...");
+          const tx = await signer.sendTransaction({
+            to: REGISTRY_ADDR,
+            value: ethers.parseEther("1")
+          });
+          setStatus(`Wake tx ${tx.hash.slice(0, 10)}... sent. Waiting for confirmation...`);
+          await tx.wait();
+          await refreshWalletInfo(provider, addr);
+          health = await waitForEnclaveWake();
+        }
+
+        setStatus("Vault online. Open a .Q (1 TEST) or queue files to mint master_1.Q.", true);
+        frameEl.src = `${ENCLAVE_URL}/`;
+        frameEl.style.display = "block";
+        launchBtn.textContent = "Vault Connected";
+      } catch (err) {
+        setStatus(`Error: ${err.shortMessage || err.message}`);
+        launchBtn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
