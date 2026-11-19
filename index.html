@@ -23,8 +23,7 @@
     blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
   };
   const REGISTRY_ABI = [
-    "function unitFee() external view returns (uint256)",
-    "function openSession(bytes32 recordId, uint64 ttlSeconds) external payable returns (bytes32)"
+    "function unitFee() external view returns (uint256)"
   ];
 
   const msgEl   = document.getElementById("hz-msg");
@@ -63,17 +62,20 @@
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer   = await provider.getSigner();
-      const reg      = new ethers.Contract(REGISTRY_ADDR, REGISTRY_ABI, signer);
+      const reg      = new ethers.Contract(REGISTRY_ADDR, REGISTRY_ABI, provider);
 
-      const fee = await reg.unitFee();
-      msgEl.textContent = `Sending ${ethers.formatEther(fee)} TEST to ServiceRegistry.openSession()...`;
-      const tx = await reg.openSession(ethers.ZeroHash, 3600, { value: fee });
+      let fee = await reg.unitFee();
+      if (fee === 0n) fee = ethers.parseEther("0.01");
+
+      msgEl.textContent = `Sending ${ethers.formatEther(fee)} TEST to fund/wake enclave...`;
+      // Hits ServiceRegistry.receive() -> adds to pendingBalance & calls _trySyncBilling()
+      const tx = await signer.sendTransaction({ to: REGISTRY_ADDR, value: fee });
+      msgEl.textContent = `Tx sent (${tx.hash.slice(0, 10)}...). Waiting for confirmation...`;
       await tx.wait();
 
       const health = await waitForEnclaveWake();
-      msgEl.textContent = `Online (${health.tee} | WASM ${health.wasm_bytes}B). Loaded directly from ROFL enclave.`;
+      msgEl.textContent = `Funded & online (${health.tee} | WASM ${health.wasm_bytes}B). Loaded directly from ROFL enclave.`;
 
-      // Enclave serves its own HTML + SIMD128 WASM directly — Render never touches the WASM
       frameEl.src = `${ENCLAVE_URL}/`;
       frameEl.style.display = "block";
     } catch (err) {
