@@ -6,15 +6,15 @@
   <title>Infinite Data Vault</title>
   <style>
     :root {
-      --bg: #060911;
-      --panel: #0d1424;
-      --panel2: #151f33;
-      --border: #1e2a40;
+      --bg: #070b14;
+      --panel: #0e1626;
+      --panel-alt: #162238;
+      --border: #20304d;
       --accent: #00e5ff;
       --ok: #22c55e;
       --warn: #f59e0b;
-      --muted: #7c8da6;
       --text: #e6edf7;
+      --muted: #8899b3;
     }
     * { box-sizing: border-box; }
     body {
@@ -24,8 +24,8 @@
       color: var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
-    .shell { max-width: 1080px; margin: 0 auto; }
-    .topbar {
+    .container { max-width: 1080px; margin: 0 auto; }
+    .header-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -37,9 +37,9 @@
       padding: 0.85rem 1.1rem;
       margin-bottom: 0.85rem;
     }
-    .brand { font-weight: 700; font-size: 1.08rem; letter-spacing: 0.02em; }
-    .actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-    button, a.btn {
+    .brand-title { font-weight: 700; font-size: 1.08rem; }
+    .button-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    button, a.action-link {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
@@ -49,55 +49,57 @@
       border-radius: 6px;
       padding: 0.55rem 0.95rem;
       font-weight: 700;
-      font-size: 0.83rem;
+      font-size: 0.84rem;
       cursor: pointer;
       text-decoration: none;
     }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.sec, a.btn.sec {
-      background: var(--panel2);
+    button.secondary, a.action-link.secondary {
+      background: var(--panel-alt);
       color: var(--text);
       border: 1px solid var(--border);
     }
-    button.ok { background: var(--ok); color: #04140a; }
-    .status {
+    button.confirm { background: var(--ok); color: #04140a; }
+    .status-line {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.8rem;
       color: var(--muted);
       margin: 0 0 0.85rem 0.15rem;
     }
-    .status.ok { color: var(--ok); }
-    .setup-card {
+    .status-line.ready { color: var(--ok); }
+    .setup-box {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 1rem 1.15rem;
       margin-bottom: 0.9rem;
     }
-    .setup-title { font-weight: 700; font-size: 0.96rem; margin-bottom: 0.35rem; }
-    .setup-desc { font-size: 0.84rem; color: var(--muted); line-height: 1.45; margin-bottom: 0.75rem; }
-    .warn-note {
+    .box-title { font-weight: 700; font-size: 0.96rem; margin-bottom: 0.35rem; }
+    .box-copy { font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.75rem; }
+    .network-warning {
       background: rgba(245, 158, 11, 0.12);
       border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fde68a;
       border-radius: 8px;
       padding: 0.65rem 0.85rem;
       font-size: 0.83rem;
       margin-bottom: 0.85rem;
     }
-    .mono-box {
-      background: #070b14;
+    .address-panel {
+      background: #070c16;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 0.7rem 0.85rem;
+      padding: 0.75rem 0.85rem;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 0.82rem;
       word-break: break-all;
       margin-top: 0.75rem;
     }
-    #idv-frame {
+    #vault-frame {
       display: none;
       width: 100%;
-      height: 880px;
+      height: calc(100vh - 130px);
+      min-height: 680px;
       border: 1px solid var(--border);
       border-radius: 10px;
       background: #080c14;
@@ -105,59 +107,69 @@
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="topbar">
-      <div class="brand">🔒 Infinite Data Vault</div>
-      <div class="actions">
-        <span id="wallet-info" style="font-size:0.8rem;color:#7c8da6;">Not connected</span>
-        <button id="btn-toggle-setup" class="sec">🚀 New Here? Setup Wallet</button>
-        <button id="btn-launch">⚡ Connect Wallet &amp; Open Vault</button>
+  <div class="container">
+    <div class="header-bar">
+      <div class="brand-title">Infinite Data Vault</div>
+      <div class="button-row">
+        <span id="wallet-summary" style="font-size:0.8rem;color:#8899b3;">Not connected</span>
+        <button id="toggle-setup-btn" class="secondary">Wallet Help</button>
+        <button id="open-vault-btn">Connect Wallet &amp; Open Vault</button>
       </div>
     </div>
 
-    <div id="status" class="status">Connect MetaMask on Oasis Sapphire Testnet to open your vault.</div>
+    <div id="status-message" class="status-line">Connect MetaMask on Oasis Sapphire Testnet to open your vault.</div>
 
-    <!-- FRONT-END WALLET & SAPPHIRE ONBOARDING (RUNS ON RENDER BEFORE ENCLAVE) -->
-    <div id="setup-panel" class="setup-card">
-      <div class="warn-note">
-        <b>Must Be Oasis Sapphire:</b> This vault runs on the <b>Oasis Sapphire</b> confidential network (Testnet Chain ID <code>0x5aff</code>). Make sure <b>Sapphire</b> is selected when requesting tokens—Consensus or Emerald tokens will not work.
+    <div id="low-balance-box" class="network-warning" style="display:none;">
+      <div style="margin-bottom:0.5rem;">
+        <b>Need Sapphire TEST tokens:</b> Your wallet has less than <code>1 TEST</code>. Copy your address, request free tokens from the Sapphire Faucet (select <b>Sapphire</b>), then click <b>Refresh Balance</b>.
+      </div>
+      <div class="button-row">
+        <button id="copy-low-balance-btn" class="confirm">Copy Address</button>
+        <a class="action-link" href="https://faucet.testnet.oasis.io/?paratime=sapphire" target="_blank" rel="noopener">Open Sapphire Faucet</a>
+        <button id="refresh-balance-btn" class="secondary">Refresh Balance</button>
+      </div>
+    </div>
+
+    <div id="setup-box" class="setup-box">
+      <div class="network-warning">
+        <b>Must Be Oasis Sapphire:</b> This vault uses the <b>Oasis Sapphire</b> network (Testnet Chain ID <code>0x5aff</code>). Make sure <b>Sapphire</b> is selected when requesting tokens.
       </div>
 
-      <div class="setup-title">3-Step Quick Start</div>
-      <div class="setup-desc">
-        1. Install <b>MetaMask</b> or generate a fresh <b>Oasis Sapphire</b> address below.<br/>
-        2. Click <b>Copy Address</b>, open the <b>Sapphire Faucet</b>, paste your <code>0x...</code> address, and claim free <code>TEST</code>.<br/>
-        3. Click <b>Connect Wallet &amp; Open Vault</b> above to launch your vault.
+      <div class="box-title">Quick Setup</div>
+      <div class="box-copy">
+        1. Install <b>MetaMask</b> if you do not have it yet, then click <b>Connect Wallet &amp; Open Vault</b>.<br/>
+        2. Copy your wallet address and paste it into the <b>Sapphire Faucet</b> to get free test tokens.<br/>
+        3. Once your balance shows at least <code>1 TEST</code>, you can open or create a vault.
       </div>
 
-      <div class="actions">
-        <a class="btn sec" href="https://metamask.io/download/" target="_blank" rel="noopener">🦊 Install MetaMask</a>
-        <button id="btn-gen-wallet" class="sec">✨ Create New Oasis Sapphire Address</button>
-        <a class="btn" href="https://faucet.testnet.oasis.io/?paratime=sapphire" target="_blank" rel="noopener">💧 Open Sapphire Faucet</a>
+      <div class="button-row">
+        <a class="action-link secondary" href="https://metamask.io/download/" target="_blank" rel="noopener">Install MetaMask</a>
+        <a class="action-link" href="https://faucet.testnet.oasis.io/?paratime=sapphire" target="_blank" rel="noopener">Open Sapphire Faucet</a>
+        <button id="create-address-btn" class="secondary">Create New Address (Offline Backup)</button>
       </div>
 
-      <div id="wallet-box" class="mono-box" style="display:none;">
-        <div style="color:var(--muted);font-size:0.75rem;margin-bottom:0.25rem;">YOUR OASIS SAPPHIRE ADDRESS</div>
-        <div class="actions" style="justify-content:space-between;">
-          <span id="gen-addr" style="color:var(--accent);font-weight:700;"></span>
-          <button id="btn-copy-addr" class="ok" style="padding:0.35rem 0.7rem;font-size:0.78rem;">📋 Copy Address</button>
+      <div id="address-panel" class="address-panel" style="display:none;">
+        <div style="color:var(--muted);font-size:0.75rem;margin-bottom:0.25rem;">SAPPHIRE WALLET ADDRESS</div>
+        <div class="button-row" style="justify-content:space-between;">
+          <span id="address-value" style="color:var(--accent);font-weight:700;"></span>
+          <button id="copy-address-btn" class="confirm" style="padding:0.35rem 0.7rem;font-size:0.78rem;">Copy Address</button>
         </div>
-        <div id="mnemonic-wrap" style="display:none;margin-top:0.65rem;padding-top:0.6rem;border-top:1px solid var(--border);">
-          <div style="color:var(--warn);font-size:0.75rem;font-weight:700;margin-bottom:0.2rem;">⚠️ SAVE THIS 12-WORD RECOVERY PHRASE (IMPORT INTO METAMASK):</div>
-          <div id="gen-mnemonic"></div>
+        <div id="recovery-wrap" style="display:none;margin-top:0.65rem;padding-top:0.6rem;border-top:1px solid var(--border);">
+          <div style="color:var(--warn);font-size:0.75rem;font-weight:700;margin-bottom:0.2rem;">SAVE THIS 12-WORD RECOVERY PHRASE (FOR IMPORTING INTO METAMASK):</div>
+          <div id="recovery-phrase"></div>
         </div>
       </div>
     </div>
 
-    <iframe id="idv-frame" allow="clipboard-write"></iframe>
+    <iframe id="vault-frame" allow="clipboard-write"></iframe>
   </div>
 
   <script type="module">
     import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
 
-    const REGISTRY_ADDR = "0xE5F62b7e51fe92D8F310F3070b6888D1AC6cFbee";
-    const ENCLAVE_URL   = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
-    const SAPPHIRE_TEST = {
+    const registry_address = "0xE5F62b7e51fe92D8F310F3070b6888D1AC6cFbee";
+    const vault_server_url = "https://p42269.m1891.opf-testnet-rofl-25.rofl.app";
+    const sapphire_network = {
       chainId: "0x5aff",
       chainName: "Oasis Sapphire Testnet",
       nativeCurrency: { name: "TEST", symbol: "TEST", decimals: 18 },
@@ -165,151 +177,187 @@
       blockExplorerUrls: ["https://explorer.oasis.io/testnet/sapphire"]
     };
 
-    const statusEl   = document.getElementById("status");
-    const walletEl   = document.getElementById("wallet-info");
-    const launchBtn  = document.getElementById("btn-launch");
-    const setupPanel = document.getElementById("setup-panel");
-    const toggleBtn  = document.getElementById("btn-toggle-setup");
-    const frameEl    = document.getElementById("idv-frame");
-    let activeAddr   = "";
+    const status_element = document.getElementById("status-message");
+    const wallet_summary = document.getElementById("wallet-summary");
+    const open_vault_btn = document.getElementById("open-vault-btn");
+    const setup_box = document.getElementById("setup-box");
+    const toggle_setup_btn = document.getElementById("toggle-setup-btn");
+    const low_balance_box = document.getElementById("low-balance-box");
+    const vault_frame = document.getElementById("vault-frame");
 
-    function setStatus(text, isOk = false) {
-      statusEl.textContent = text;
-      statusEl.className = isOk ? "status ok" : "status";
+    let current_address = "";
+    let current_balance_test = 0;
+
+    function update_status(message, is_ready = false) {
+      status_element.textContent = message;
+      status_element.className = is_ready ? "status-line ready" : "status-line";
     }
 
-    toggleBtn.onclick = () => {
-      const hidden = setupPanel.style.display === "none";
-      setupPanel.style.display = hidden ? "block" : "none";
+    toggle_setup_btn.onclick = () => {
+      const is_hidden = setup_box.style.display === "none";
+      setup_box.style.display = is_hidden ? "block" : "none";
     };
 
-    document.getElementById("btn-gen-wallet").onclick = () => {
-      const w = ethers.Wallet.createRandom();
-      activeAddr = w.address;
-      document.getElementById("gen-addr").textContent = w.address;
-      document.getElementById("gen-mnemonic").textContent = w.mnemonic.phrase;
-      document.getElementById("mnemonic-wrap").style.display = "block";
-      document.getElementById("wallet-box").style.display = "block";
-      setStatus("Generated new Oasis Sapphire address locally. Copy it and paste into the Sapphire Faucet.", true);
+    function show_address(address, phrase = null) {
+      current_address = address;
+      document.getElementById("address-value").textContent = address;
+      document.getElementById("address-panel").style.display = "block";
+      const phrase_wrap = document.getElementById("recovery-wrap");
+      if (phrase) {
+        document.getElementById("recovery-phrase").textContent = phrase;
+        phrase_wrap.style.display = "block";
+      } else {
+        phrase_wrap.style.display = "none";
+      }
+    }
+
+    document.getElementById("create-address-btn").onclick = () => {
+      const created_wallet = ethers.Wallet.createRandom();
+      show_address(created_wallet.address, created_wallet.mnemonic.phrase);
+      update_status("Created a new address locally. Copy it, fund it via the Sapphire Faucet, or import the recovery phrase into MetaMask.", true);
     };
 
-    document.getElementById("btn-copy-addr").onclick = async () => {
-      if (!activeAddr) return;
-      await navigator.clipboard.writeText(activeAddr);
-      setStatus(`Copied ${activeAddr} — paste it into the Oasis Sapphire Faucet!`, true);
-    };
+    async function copy_address() {
+      if (!current_address) {
+        update_status("Connect MetaMask or create an address first.");
+        return;
+      }
+      await navigator.clipboard.writeText(current_address);
+      update_status(`Copied ${current_address} — paste it into the Oasis Sapphire Faucet.`, true);
+    }
 
-    async function switchSapphire() {
-      if (!window.ethereum) throw new Error("MetaMask not detected. Click 'Install MetaMask' above.");
+    document.getElementById("copy-address-btn").onclick = copy_address;
+    document.getElementById("copy-low-balance-btn").onclick = copy_address;
+
+    async function ensure_sapphire_network() {
+      if (!window.ethereum) {
+        throw new Error("MetaMask is not installed. Click 'Install MetaMask' first.");
+      }
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: SAPPHIRE_TEST.chainId }]
+          params: [{ chainId: sapphire_network.chainId }]
         });
-      } catch (e) {
-        if (e.code === 4902) {
+      } catch (err) {
+        if (err.code === 4902) {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
-            params: [SAPPHIRE_TEST]
+            params: [sapphire_network]
           });
         } else {
-          throw e;
+          throw err;
         }
       }
     }
 
-    async function refreshWalletInfo(provider, addr) {
-      activeAddr = addr;
-      const bal = await provider.getBalance(addr);
-      const shortAddr = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-      walletEl.textContent = `${shortAddr} (${Number(ethers.formatEther(bal)).toFixed(2)} TEST)`;
-      document.getElementById("gen-addr").textContent = addr;
-      document.getElementById("mnemonic-wrap").style.display = "none";
-      document.getElementById("wallet-box").style.display = "block";
+    async function refresh_balance() {
+      if (!window.ethereum) return;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      const raw_balance = await provider.getBalance(address);
+      current_balance_test = Number(ethers.formatEther(raw_balance));
+      show_address(address, null);
+      wallet_summary.textContent = `${address.slice(0, 6)}...${address.slice(-4)} (${current_balance_test.toFixed(2)} TEST)`;
+      low_balance_box.style.display = current_balance_test < 1 ? "block" : "none";
     }
 
-    async function probeHealth() {
+    document.getElementById("refresh-balance-btn").onclick = async () => {
       try {
-        const r = await fetch(`${ENCLAVE_URL}/health`, { cache: "no-store" });
-        if (r.ok) {
-          const j = await r.json();
-          if (j.status === "ok") return j;
+        await ensure_sapphire_network();
+        await refresh_balance();
+        update_status(`Balance updated: ${current_balance_test.toFixed(2)} TEST.`, current_balance_test >= 1);
+      } catch (err) {
+        update_status(`Error: ${err.shortMessage || err.message}`);
+      }
+    };
+
+    async function check_vault_health() {
+      try {
+        const response = await fetch(`${vault_server_url}/health`, { cache: "no-store" });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === "ok") return data;
         }
       } catch (_) {}
       return null;
     }
 
-    async function waitForEnclaveWake() {
-      for (let i = 1; i <= 30; i++) {
-        const h = await probeHealth();
-        if (h) return h;
-        setStatus(`Waiting for vault node to wake... (${i * 3}s)`);
-        await new Promise((res) => setTimeout(res, 3000));
+    async function wait_for_vault_ready() {
+      for (let attempt = 1; attempt <= 30; attempt++) {
+        const health = await check_vault_health();
+        if (health) return health;
+        update_status(`Starting vault service... (${attempt * 3}s)`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-      throw new Error("Vault wake timeout (90s).");
+      throw new Error("Vault startup timed out after 90 seconds.");
     }
 
-    // Bridge: handles 1 TEST open & N TEST batch payments requested by the enclave iframe
-    window.addEventListener("message", async (ev) => {
-      if (ev.origin !== ENCLAVE_URL || ev.data?.type !== "IDV_PAY") return;
-      const { reqId, amountTest, to, reason } = ev.data;
+    window.addEventListener("message", async (event) => {
+      if (event.origin !== vault_server_url || event.data?.type !== "VAULT_PAYMENT_REQUEST") return;
+      const { request_id, amount_test, label } = event.data;
       try {
-        await switchSapphire();
+        await ensure_sapphire_network();
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
-        const addr = await signer.getAddress();
 
-        setStatus(`Confirm ${amountTest} TEST in MetaMask (${reason || "Vault action"})...`);
+        update_status(`Approve ${amount_test} TEST in MetaMask (${label || "Vault action"})...`);
         const tx = await signer.sendTransaction({
-          to: to || REGISTRY_ADDR,
-          value: ethers.parseEther(String(amountTest))
+          to: registry_address,
+          value: ethers.parseEther(String(amount_test))
         });
-        setStatus(`Tx ${tx.hash.slice(0, 10)}... sent. Waiting for Oasis Sapphire confirmation...`);
+        update_status(`Transaction ${tx.hash.slice(0, 10)}... sent. Waiting for confirmation...`);
         await tx.wait();
-        await refreshWalletInfo(provider, addr);
+        await refresh_balance();
 
-        setStatus(`Confirmed ${amountTest} TEST (${tx.hash.slice(0, 10)}...).`, true);
-        frameEl.contentWindow.postMessage({ type: "IDV_PAID", reqId, txHash: tx.hash }, ENCLAVE_URL);
+        update_status(`Confirmed ${amount_test} TEST (${tx.hash.slice(0, 10)}...).`, true);
+        vault_frame.contentWindow.postMessage(
+          { type: "VAULT_PAYMENT_APPROVED", request_id, tx_hash: tx.hash },
+          vault_server_url
+        );
       } catch (err) {
-        const msg = err.shortMessage || err.message || "Payment cancelled";
-        setStatus(`Payment error: ${msg}`);
-        frameEl.contentWindow.postMessage({ type: "IDV_PAY_ERR", reqId, error: msg }, ENCLAVE_URL);
+        const message = err.shortMessage || err.message || "Payment cancelled";
+        update_status(`Payment error: ${message}`);
+        vault_frame.contentWindow.postMessage(
+          { type: "VAULT_PAYMENT_REJECTED", request_id, error: message },
+          vault_server_url
+        );
       }
     });
 
-    launchBtn.onclick = async () => {
-      launchBtn.disabled = true;
+    open_vault_btn.onclick = async () => {
+      open_vault_btn.disabled = true;
       try {
-        setStatus("Connecting MetaMask to Oasis Sapphire Testnet...");
-        await switchSapphire();
+        update_status("Connecting MetaMask to Oasis Sapphire Testnet...");
+        await ensure_sapphire_network();
+        await refresh_balance();
 
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const addr = await signer.getAddress();
-        await refreshWalletInfo(provider, addr);
-
-        // Probe enclave: if awake, mount immediately; if asleep, send 1 TEST to escrow to wake it
-        let health = await probeHealth();
+        let health = await check_vault_health();
         if (!health) {
-          setStatus("Vault node is asleep. Confirm 1 TEST to fund escrow & wake it...");
+          if (current_balance_test < 1) {
+            throw new Error("You need at least 1 TEST to wake the vault. Use the faucet button above first.");
+          }
+          update_status("Vault is sleeping. Approve 1 TEST in MetaMask to wake it...");
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
           const tx = await signer.sendTransaction({
-            to: REGISTRY_ADDR,
+            to: registry_address,
             value: ethers.parseEther("1")
           });
-          setStatus(`Wake tx ${tx.hash.slice(0, 10)}... sent. Waiting for confirmation...`);
+          update_status(`Wake transaction ${tx.hash.slice(0, 10)}... sent. Waiting for confirmation...`);
           await tx.wait();
-          await refreshWalletInfo(provider, addr);
-          health = await waitForEnclaveWake();
+          await refresh_balance();
+          health = await wait_for_vault_ready();
         }
 
-        setupPanel.style.display = "none";
-        setStatus("Vault online. Open a .Q (1 TEST) or drop files to mint master_1.Q.", true);
-        frameEl.src = `${ENCLAVE_URL}/`;
-        frameEl.style.display = "block";
-        launchBtn.textContent = "Vault Connected";
+        setup_box.style.display = "none";
+        update_status("Vault ready. Open an existing .Q file or drop files to create master_1.Q.", true);
+        vault_frame.src = `${vault_server_url}/`;
+        vault_frame.style.display = "block";
+        open_vault_btn.textContent = "Vault Connected";
       } catch (err) {
-        setStatus(`Error: ${err.shortMessage || err.message}`);
-        launchBtn.disabled = false;
+        update_status(`Error: ${err.shortMessage || err.message}`);
+        open_vault_btn.disabled = false;
       }
     };
   </script>
